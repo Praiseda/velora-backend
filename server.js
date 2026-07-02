@@ -134,6 +134,9 @@ const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET || "sk_test_your_paystack_ke
 // ================================================================
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
 
 // ================================================================
 // HELPERS
