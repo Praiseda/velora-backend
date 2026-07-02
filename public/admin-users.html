@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Users – Velora Admin</title>
+<style>
+body{ margin:0; font-family:Arial; background:#081421; color:white; }
+.header{ background:#0d2035; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.container{ padding:20px; }
+.search-bar{ display:flex; gap:10px; margin-bottom:14px; align-items:center; flex-wrap:wrap; }
+.search-bar input{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; width:260px; }
+.search-bar input:focus{ outline:none; border-color:#22c55e; }
+.search-bar button{ background:#1e4d6b; color:#7dd3fc; border:1px solid #2d6a8f; padding:8px 14px; border-radius:7px; font-size:13px; cursor:pointer; }
+table{ width:100%; border-collapse:collapse; margin-top:10px; }
+th,td{ border:1px solid #2d4d66; padding:10px; font-size:13px; }
+th{ background:#0d2035; }
+button{ padding:6px 10px; border:none; cursor:pointer; border-radius:5px; margin:2px; font-size:12px; color:white; }
+.btn-ban{ background:#dc2626; } .btn-reset{ background:#2563eb; } .btn-end{ background:#b45309; } .btn-bank{ background:#6d28d9; } .btn-withdraw{ background:#0e7490; }
+.empty{ color:#94a3b8; font-size:13px; padding:10px; text-align:center; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.count{ font-size:13px; color:#94a3b8; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/admin.html'">← Back</button>
+  <h2>👥 All Users</h2>
+  <div></div>
+</div>
+<div class="container">
+  <div class="search-bar">
+    <input type="text" id="userSearch" placeholder="Search by email..." oninput="filterUsers()">
+    <button onclick="filterUsers()">Search</button>
+    <button onclick="clearSearch()">Clear</button>
+  </div>
+  <div class="count" id="countLabel">Loading...</div>
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Wallet</th><th>Plan</th><th>Status</th><th>Admin</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="usersTable"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+  </table>
+</div>
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+let allUsers = [];
+
+async function loadUsers(){
+  try {
+    const res  = await fetch("/api/admin/users", { headers:{ Authorization:"Bearer "+token } });
+    if(res.status===401||res.status===403){ window.location.href="/login.html"; return; }
+    allUsers = await res.json();
+    renderUsers(allUsers);
+  } catch(err){ console.error(err); }
+}
+
+function renderUsers(data){
+  const table = document.getElementById("usersTable");
+  document.getElementById("countLabel").innerText = `${data.length} user${data.length!==1?"s":""} found`;
+  if(!data.length){ table.innerHTML=`<tr><td colspan="6" class="empty">No users found.</td></tr>`; return; }
+  table.innerHTML = data.map(u=>`
+    <tr>
+      <td>${u.email}</td>
+      <td>₦${(u.walletBalance||0).toLocaleString()}</td>
+      <td>${u.plan||"Starter"}</td>
+      <td>${u.isBlocked?"❌ Banned":"✅ Active"}</td>
+      <td>${u.isAdmin?"👑 Admin":"User"}</td>
+      <td>
+        <button class="btn-ban" onclick="toggleBan('${u.email}')">${u.isBlocked?"Unban":"Ban"}</button>
+        <button class="btn-reset" onclick="resetPassword('${u.email}')">Reset PW</button>
+        <button class="btn-withdraw" onclick="resetWithdrawPassword('${u.email}')">Reset W.PW</button>
+        <button class="btn-end" onclick="endInvestment('${u.email}')">End Plan</button>
+        <button class="btn-bank" onclick="resetBank('${u.email}')">Reset Bank</button>
+      </td>
+    </tr>`).join("");
+}
+
+function filterUsers(){
+  const q = document.getElementById("userSearch").value.trim().toLowerCase();
+  renderUsers(q ? allUsers.filter(u=>u.email.toLowerCase().includes(q)) : allUsers);
+}
+function clearSearch(){ document.getElementById("userSearch").value=""; renderUsers(allUsers); }
+
+async function toggleBan(email){
+  if(!confirm(`Toggle ban for ${email}?`)) return;
+  const res = await fetch("/api/admin/user/toggle-ban",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+  const data = await res.json(); alert(data.message); loadUsers();
+}
+async function resetPassword(email){
+  if(!confirm(`Reset login password for ${email}?`)) return;
+  const res = await fetch("/api/admin/reset-password",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+  const data = await res.json(); alert(`Temp password: ${data.tempPassword}`);
+}
+async function resetWithdrawPassword(email){
+  if(!confirm(`Reset withdrawal password for ${email}?`)) return;
+  const res = await fetch("/api/admin/reset-withdraw-password",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+  const data = await res.json(); alert(data.message);
+}
+async function endInvestment(email){
+  if(!confirm(`End active investment for ${email}?`)) return;
+  const res = await fetch("/api/admin/invest/end",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+  const data = await res.json(); alert(data.message); loadUsers();
+}
+async function resetBank(email){
+  if(!confirm(`Reset bank details for ${email}?`)) return;
+  const res = await fetch("/api/admin/user/reset-bank",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+  const data = await res.json(); alert(data.message);
+}
+loadUsers();
+</script>
+</body>
+</html>

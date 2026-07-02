@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Investment Plans</title>
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.header{
+  padding:16px 20px;
+  background:#1e293b;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #2a455c;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+
+.header h2{ margin:0; font-size:16px; }
+
+
+
+.container{
+  padding:20px;
+  max-width:520px;
+  margin:0 auto;
+}
+
+.balance{
+  background:#0f2d45;
+  border:1px solid #1e4d6b;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+.balance h3{ margin:0 0 4px; font-size:13px; color:#94a3b8; font-weight:normal; }
+.balance h2{ margin:0; color:#7dd3fc; }
+.balance .sub{ font-size:11px; color:#475569; margin-top:4px; }
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:15px;
+}
+
+.card{
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+  text-align:center;
+}
+
+.badge{
+  display:inline-block;
+  background:#0f172a;
+  color:#94a3b8;
+  font-size:11px;
+  padding:4px 10px;
+  border-radius:20px;
+  margin-bottom:8px;
+}
+
+button{
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:#22c55e;
+  color:white;
+  width:100%;
+  font-size:14px;
+  font-weight:bold;
+}
+
+button:hover{
+  background:#16a34a;
+}
+
+button:disabled{
+  background:#334155;
+  cursor:not-allowed;
+  color:#94a3b8;
+}
+
+.small{
+  font-size:12px;
+  color:#94a3b8;
+  margin:4px 0;
+}
+
+.active-badge{
+  display:inline-block;
+  background:#166534;
+  color:#4ade80;
+  font-size:11px;
+  padding:4px 10px;
+  border-radius:20px;
+  margin-top:8px;
+}
+
+#msg{
+  text-align:center;
+  font-size:13px;
+  margin-top:16px;
+  min-height:18px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div onclick="window.history.back()" style="cursor:pointer;">← Back</div>
+  <h2>📈 Investment Plans</h2>
+  <div></div>
+</div>
+
+<div class="container">
+
+  <div class="balance">
+    <h3>Deposit Wallet Balance</h3>
+    <h2 id="balance">Loading...</h2>
+    <div class="sub">Used to activate investment plans</div>
+  </div>
+
+  <h3 style="margin-bottom:14px;">Available Plans</h3>
+
+  <div class="grid" id="plans">
+    <p style="color:#94a3b8;">Loading plans...</p>
+  </div>
+
+  <div id="msg"></div>
+
+</div>
+
+<script>
+
+const token = localStorage.getItem("token");
+
+if(!token){
+  window.location.href="/login.html";
+}
+
+let currentPlan  = "";
+let depositBal   = 0;
+
+// LOAD PROFILE
+async function loadProfile(){
+  try {
+    const res = await fetch("/api/user/profile", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+
+    if(res.status === 401){
+      localStorage.removeItem("token");
+      window.location.href="/login.html";
+      return;
+    }
+
+    const data   = await res.json();
+    depositBal   = Number(data.depositBalance || 0);
+    currentPlan  = data.plan || "Starter";
+    document.getElementById("balance").innerText = "₦" + depositBal.toLocaleString();
+
+  } catch(err) {
+    document.getElementById("balance").innerText = "Error loading";
+  }
+}
+
+// LOAD PLANS
+async function loadPlans(){
+  try {
+    const res   = await fetch("/api/invest/plans", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+    const plans = await res.json();
+
+    if(!plans.length){
+      document.getElementById("plans").innerHTML = "<p style='color:#94a3b8;'>No plans available.</p>";
+      return;
+    }
+
+    let html = "";
+
+    plans.forEach(p => {
+      const isActive  = currentPlan === p.name;
+      const canAfford = depositBal >= p.price;
+
+      html += `
+        <div class="card">
+          <span class="badge">PLAN</span>
+          <h3>${p.name}</h3>
+          <p class="small">Deposit: ₦${Number(p.price).toLocaleString()}</p>
+          <p class="small">Daily Profit: ₦${Number(p.dailyProfit).toLocaleString()}</p>
+          <p class="small">Duration: <strong style="color:#22c55e;">Ongoing</strong></p>
+
+          ${isActive
+            ? `<div class="active-badge">✔ Current Plan</div>`
+            : `<button
+                id="btn-${p.id}"
+                onclick="activate(${p.id}, '${p.name}', ${p.price})"
+                ${!canAfford ? "disabled" : ""}
+               >${!canAfford ? "Insufficient Balance" : "Activate Plan"}</button>`
+          }
+        </div>
+      `;
+    });
+
+    document.getElementById("plans").innerHTML = html;
+
+  } catch(err) {
+    document.getElementById("plans").innerHTML = "<p style='color:#ef4444;'>Failed to load plans.</p>";
+  }
+}
+
+// ACTIVATE PLAN
+async function activate(planId, planName, planPrice){
+  if(!confirm(`Activate the ${planName} plan for ₦${Number(planPrice).toLocaleString()}?`)) return;
+
+  const btn = document.getElementById("btn-"+planId);
+  const msg = document.getElementById("msg");
+
+  if(btn){ btn.disabled = true; btn.innerText = "Activating..."; }
+  msg.style.color = "";
+  msg.innerText   = "";
+
+  try {
+    const res  = await fetch("/api/invest/activate", {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:"Bearer "+token
+      },
+      body: JSON.stringify({ planId })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      msg.style.color = "#4ade80";
+      msg.innerText   = data.message;
+      await loadProfile();
+      loadPlans();
+    } else {
+      msg.style.color = "#ef4444";
+      msg.innerText   = data.message || "Activation failed";
+      if(btn){ btn.disabled = false; btn.innerText = "Activate Plan"; }
+    }
+
+  } catch(err) {
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Server error. Please try again.";
+    if(btn){ btn.disabled = false; btn.innerText = "Activate Plan"; }
+  }
+}
+
+// INIT
+async function init(){
+  await loadProfile();
+  loadPlans();
+}
+
+init();
+
+</script>
+
+</body>
+</html>

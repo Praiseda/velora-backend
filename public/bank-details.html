@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank Details – Velora</title>
+<style>
+
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.header{
+  background:#1e293b;
+  padding:16px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+
+.header h2{ margin:0; font-size:16px; }
+
+.container{
+  padding:20px;
+  max-width:500px;
+  margin:0 auto;
+}
+
+.card{
+  background:#1e293b;
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:20px;
+}
+
+.card h3{
+  margin:0 0 14px;
+  font-size:16px;
+  border-bottom:1px solid #2d4d66;
+  padding-bottom:10px;
+}
+
+label{
+  display:block;
+  font-size:12px;
+  color:#94a3b8;
+  margin-bottom:4px;
+  margin-top:12px;
+}
+
+input, select{
+  width:100%;
+  padding:10px;
+  border:1px solid #334155;
+  border-radius:7px;
+  background:#0f172a;
+  color:white;
+  font-size:14px;
+  box-sizing:border-box;
+}
+
+input:focus, select:focus{
+  outline:none;
+  border-color:#22c55e;
+}
+
+select option{ background:#0f172a; }
+
+.btn-primary{
+  width:100%;
+  padding:11px;
+  background:#22c55e;
+  border:none;
+  color:white;
+  cursor:pointer;
+  border-radius:7px;
+  font-size:15px;
+  margin-top:16px;
+}
+
+.btn-primary:hover{ background:#16a34a; }
+.btn-primary:disabled{ background:#334155; color:#94a3b8; cursor:not-allowed; }
+
+.status-box{
+  background:#0a1e2e;
+  border-radius:8px;
+  padding:10px 14px;
+  font-size:13px;
+  margin-bottom:14px;
+  color:#94a3b8;
+}
+
+.status-box.saved{
+  color:#4ade80;
+  border:1px solid #166534;
+}
+
+.status-box.missing{
+  color:#f59e0b;
+  border:1px solid #92400e;
+}
+
+.msg{
+  font-size:13px;
+  text-align:center;
+  margin-top:10px;
+  min-height:18px;
+}
+
+.back-btn{
+  background:#0f2d45;
+  color:#7dd3fc;
+  border:1px solid #1e4d6b;
+  padding:10px 18px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:14px;
+}
+
+.back-btn:hover{ background:#163a54; }
+
+.divider{
+  border:none;
+  border-top:1px solid #1e3a52;
+  margin:20px 0;
+}
+
+.note{
+  font-size:12px;
+  color:#64748b;
+  margin-top:8px;
+  line-height:1.5;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="goBack()">← Back</button>
+  <h2>🏦 Bank Details</h2>
+  <div></div>
+</div>
+
+<div class="container">
+
+  <!-- BANK DETAILS CARD -->
+  <div class="card">
+    <h3>Bank Account Details</h3>
+
+    <div class="status-box missing" id="bankStatus">Loading...</div>
+
+    <label>Bank Name</label>
+    <select id="bankName">
+      <option value="">-- Select Bank --</option>
+      <option>Access Bank</option>
+      <option>Citibank</option>
+      <option>Ecobank</option>
+      <option>FCMB</option>
+      <option>Fidelity Bank</option>
+      <option>First Bank</option>
+      <option>GTBank</option>
+      <option>Heritage Bank</option>
+      <option>Jaiz Bank</option>
+      <option>Keystone Bank</option>
+      <option>Kuda Bank</option>
+      <option>Moniepoint</option>
+      <option>Opay</option>
+      <option>Palmpay</option>
+      <option>Polaris Bank</option>
+      <option>Providus Bank</option>
+      <option>Stanbic IBTC</option>
+      <option>Standard Chartered</option>
+      <option>Sterling Bank</option>
+      <option>SunTrust Bank</option>
+      <option>UBA</option>
+      <option>Union Bank</option>
+      <option>Unity Bank</option>
+      <option>Wema Bank</option>
+      <option>Zenith Bank</option>
+    </select>
+
+    <label>Account Name</label>
+    <input type="text" id="accountName" placeholder="Full name on account">
+
+    <label>Account Number</label>
+    <input type="text" id="accountNumber" placeholder="10-digit account number" maxlength="10">
+
+    <button class="btn-primary" id="saveBankBtn" onclick="saveBankDetails()">
+      Save Bank Details
+    </button>
+    <p class="msg" id="bankMsg"></p>
+  </div>
+
+  <!-- WITHDRAWAL PASSWORD CARD -->
+  <div class="card">
+    <h3>🔐 Withdrawal Password</h3>
+
+    <div class="status-box" id="withdrawPwStatus">Loading...</div>
+
+    <p class="note">
+      Your withdrawal password is separate from your login password.
+      You will be asked for it every time you request a withdrawal.
+    </p>
+
+    <hr class="divider">
+
+    <label>Current Withdrawal Password <span style="color:#64748b;">(leave blank if setting for the first time)</span></label>
+    <input type="password" id="currentWithdrawPw" placeholder="Current withdrawal password">
+
+    <label>New Withdrawal Password</label>
+    <input type="password" id="newWithdrawPw" placeholder="New withdrawal password (min 6 chars)">
+
+    <label>Confirm New Password</label>
+    <input type="password" id="confirmWithdrawPw" placeholder="Repeat new password">
+
+    <button class="btn-primary" id="saveWithdrawPwBtn" onclick="saveWithdrawPassword()">
+      Save Withdrawal Password
+    </button>
+    <p class="msg" id="withdrawPwMsg"></p>
+  </div>
+
+</div>
+
+<script>
+
+const token = localStorage.getItem("token");
+if(!token){ window.location.href = "/login.html"; }
+
+function goBack(){
+  window.location.href = "/dashboard.html";
+}
+
+// ── LOAD BANK DETAILS ──────────────────────────────────────
+async function loadBankDetails(){
+  try {
+    const res  = await fetch("/api/user/bank-details", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+
+    if(res.status === 401){
+      localStorage.removeItem("token");
+      window.location.href = "/login.html";
+      return;
+    }
+
+    const data = await res.json();
+    const el   = document.getElementById("bankStatus");
+
+    if(data.bankName){
+      el.className = "status-box saved";
+      el.innerText = `✔ Saved: ${data.bankName} — ${data.accountName} (${data.accountNumber})`;
+      document.getElementById("bankName").value     = data.bankName;
+      document.getElementById("accountName").value  = data.accountName;
+      document.getElementById("accountNumber").value = data.accountNumber;
+    } else {
+      el.className = "status-box missing";
+      el.innerText = "⚠ No bank details saved yet. Please add them before withdrawing.";
+    }
+  } catch(err) {
+    console.error("Bank load error", err);
+  }
+}
+
+// ── SAVE BANK DETAILS ──────────────────────────────────────
+async function saveBankDetails(){
+  const bankName      = document.getElementById("bankName").value.trim();
+  const accountName   = document.getElementById("accountName").value.trim();
+  const accountNumber = document.getElementById("accountNumber").value.trim();
+  const msg           = document.getElementById("bankMsg");
+  const btn           = document.getElementById("saveBankBtn");
+
+  if(!bankName || !accountName || !accountNumber){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Please fill in all fields";
+    return;
+  }
+
+  if(!/^\d{10}$/.test(accountNumber)){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Account number must be exactly 10 digits";
+    return;
+  }
+
+  btn.disabled  = true;
+  btn.innerText = "Saving...";
+
+  try {
+    const res  = await fetch("/api/user/bank-details", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer "+token },
+      body: JSON.stringify({ bankName, accountName, accountNumber })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      msg.style.color = "#4ade80";
+      msg.innerText   = "Bank details saved ✔";
+      loadBankDetails();
+    } else {
+      msg.style.color = "#ef4444";
+      msg.innerText   = data.message || "Save failed";
+    }
+  } catch(err) {
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Server error. Please try again.";
+  } finally {
+    btn.disabled  = false;
+    btn.innerText = "Save Bank Details";
+  }
+}
+
+// ── LOAD WITHDRAWAL PW STATUS ──────────────────────────────
+async function loadWithdrawPwStatus(){
+  try {
+    const res  = await fetch("/api/user/withdraw-password/status", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+    const data = await res.json();
+    const el   = document.getElementById("withdrawPwStatus");
+
+    if(data.isSet){
+      el.className = "status-box saved";
+      el.innerText = "✔ Withdrawal password is set";
+    } else {
+      el.className = "status-box missing";
+      el.innerText = "⚠ No withdrawal password set yet. Please set one before withdrawing.";
+    }
+  } catch(err) {
+    console.error("Withdraw PW status error", err);
+  }
+}
+
+// ── SAVE WITHDRAWAL PASSWORD ───────────────────────────────
+async function saveWithdrawPassword(){
+  const currentPw = document.getElementById("currentWithdrawPw").value;
+  const newPw     = document.getElementById("newWithdrawPw").value;
+  const confirmPw = document.getElementById("confirmWithdrawPw").value;
+  const msg       = document.getElementById("withdrawPwMsg");
+  const btn       = document.getElementById("saveWithdrawPwBtn");
+
+  if(!newPw || !confirmPw){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Please fill in new password and confirmation";
+    return;
+  }
+
+  if(newPw.length < 6){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Password must be at least 6 characters";
+    return;
+  }
+
+  if(newPw !== confirmPw){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Passwords do not match";
+    return;
+  }
+
+  btn.disabled  = true;
+  btn.innerText = "Saving...";
+
+  try {
+    const res  = await fetch("/api/user/withdraw-password", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer "+token },
+      body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw })
+    });
+
+    const data = await res.json();
+
+    if(res.ok){
+      msg.style.color = "#4ade80";
+      msg.innerText   = "Withdrawal password saved ✔";
+      document.getElementById("currentWithdrawPw").value = "";
+      document.getElementById("newWithdrawPw").value     = "";
+      document.getElementById("confirmWithdrawPw").value = "";
+      loadWithdrawPwStatus();
+    } else {
+      msg.style.color = "#ef4444";
+      msg.innerText   = data.message || "Save failed";
+    }
+  } catch(err) {
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Server error. Please try again.";
+  } finally {
+    btn.disabled  = false;
+    btn.innerText = "Save Withdrawal Password";
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────
+loadBankDetails();
+loadWithdrawPwStatus();
+
+</script>
+
+</body>
+</html>

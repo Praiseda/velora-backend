@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Orders</title>
+<style>
+body{ margin:0; font-family:Arial; background:#0f172a; color:white; }
+.header{ background:#1e293b; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.container{ padding:20px; max-width:600px; margin:0 auto; }
+.progress-card{ background:#102437; border-radius:12px; padding:16px; margin-bottom:20px; }
+.progress-label{ display:flex; justify-content:space-between; font-size:13px; color:#cbd5e1; margin-bottom:8px; }
+.progress{ width:100%; height:14px; background:#1e3a52; border-radius:20px; overflow:hidden; }
+.progress-bar{ height:100%; width:0%; background:#22c55e; border-radius:20px; transition:width 0.4s ease; }
+.commission-info{ margin-top:10px; font-size:12px; color:#94a3b8; }
+.commission-info span{ color:#4ade80; font-weight:bold; }
+.all-done{ background:#052e16; border:1px solid #166534; border-radius:12px; padding:20px; text-align:center; margin-bottom:20px; display:none; }
+.all-done h3{ color:#4ade80; margin:0 0 10px; }
+.all-done p{ color:#cbd5e1; font-size:13px; margin:0 0 14px; }
+.order-card{ background:#102437; border-radius:12px; padding:14px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; transition:opacity 0.3s; }
+.order-card.approved{ opacity:0.5; }
+.order-left{ flex:1; }
+.order-ref{ font-size:11px; color:#475569; margin-bottom:4px; }
+.order-name{ font-size:14px; font-weight:bold; margin-bottom:4px; }
+.order-price{ font-size:12px; color:#94a3b8; }
+.order-commission{ font-size:12px; color:#4ade80; margin-top:2px; }
+.order-right{ text-align:right; }
+.approve-btn{ background:#22c55e; color:white; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:bold; white-space:nowrap; }
+.approve-btn:hover{ background:#16a34a; }
+.approve-btn:disabled{ background:#1e3a52; color:#475569; cursor:not-allowed; }
+.approved-badge{ background:#052e16; color:#4ade80; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:bold; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:10px 18px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.loading{ text-align:center; padding:40px; color:#94a3b8; }
+.info-banner{ background:#0f2d45; border:1px solid #1e4d6b; border-radius:12px; padding:24px; text-align:center; margin-bottom:20px; }
+.info-banner h3{ margin:0 0 8px; color:#7dd3fc; }
+.info-banner p{ font-size:13px; color:#94a3b8; margin:0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div onclick="goBack()" style="cursor:pointer; color:#7dd3fc;">← Back</div>
+  <h2>📦 Daily Orders</h2>
+  <div id="headerCount" style="font-size:13px; color:#94a3b8;">0/0</div>
+</div>
+<div class="container">
+  <div class="progress-card">
+    <div class="progress-label">
+      <span>Orders Approved</span>
+      <span id="progressText">0 / 0</span>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="commission-info">Earning <span id="commissionAmt">₦0</span> per order approved</div>
+  </div>
+  <div class="all-done" id="allDoneBanner">
+    <h3>🎉 All Orders Approved!</h3>
+    <p>You have completed all your daily orders. Go back to claim your profit.</p>
+    <button class="approve-btn" onclick="goBack()">Go Claim Profit →</button>
+  </div>
+  <div id="ordersList"><div class="loading">Loading your orders...</div></div>
+</div>
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href = "/login.html"; }
+
+let orders = [], completed = 0, total = 0;
+
+function goBack(){ window.location.href = "/dashboard.html"; }
+
+async function loadOrders(){
+  try {
+    const res = await fetch("/api/orders/today", { headers:{ Authorization:"Bearer "+token } });
+
+    if(res.status === 401){ localStorage.removeItem("token"); window.location.href = "/login.html"; return; }
+
+    const raw = await res.json();
+
+    // No plan check
+    if(raw.noPlan){
+      document.getElementById("ordersList").innerHTML =
+        `<div class="info-banner"><h3>📋 No Plan Active</h3><p>You need to activate an investment plan before you can access daily orders.<br><a href="/invest.html" style="color:#22c55e;">Activate a plan →</a></p></div>`;
+      document.getElementById("progressText").innerText = "No plan";
+      document.getElementById("headerCount").innerText  = "—";
+      return;
+    }
+
+    // Weekend check
+    if(raw.weekend){
+      document.getElementById("ordersList").innerHTML =
+        `<div class="info-banner"><h3>📅 Weekend</h3><p>Tasks are only available <strong>Monday to Friday</strong>.<br>Enjoy your weekend and come back on Monday!</p></div>`;
+      document.getElementById("progressText").innerText = "Weekend";
+      document.getElementById("headerCount").innerText  = "—";
+      return;
+    }
+
+    // Holiday blackout check
+    if(raw.blackout){
+      document.getElementById("ordersList").innerHTML =
+        `<div class="info-banner"><h3>🏖 Holiday</h3><p>Tasks are paused for a holiday period.<br>Check back when the holiday ends.</p></div>`;
+      document.getElementById("progressText").innerText = "Holiday";
+      document.getElementById("headerCount").innerText  = "—";
+      return;
+    }
+
+    orders = Array.isArray(raw) ? raw : [];
+
+    if(!orders.length){
+      document.getElementById("ordersList").innerHTML =
+        `<div class="loading">No orders found. Make sure you have an active investment plan.</div>`;
+      return;
+    }
+
+    completed = orders.filter(o => o.status === "approved").length;
+    total     = orders.length;
+    const commission = orders[0]?.commission || 0;
+    document.getElementById("commissionAmt").innerText = "₦" + Number(commission).toLocaleString();
+    updateProgress();
+    renderOrders();
+
+  } catch(err) {
+    document.getElementById("ordersList").innerHTML =
+      `<div class="loading" style="color:#ef4444;">Failed to load orders. Please try again.</div>`;
+  }
+}
+
+function renderOrders(){
+  const list = document.getElementById("ordersList");
+  if(!orders.length){ list.innerHTML = `<div class="loading">No orders for today.</div>`; return; }
+  list.innerHTML = orders.map(o => {
+    const isApproved = o.status === "approved";
+    return `
+      <div class="order-card ${isApproved?"approved":""}" id="order-${o.id}">
+        <div class="order-left">
+          <div class="order-ref">${o.orderRef}</div>
+          <div class="order-name">${o.productName}</div>
+          <div class="order-price">Price: ₦${Number(o.productPrice).toLocaleString()}</div>
+          <div class="order-commission">Commission: +₦${Number(o.commission).toLocaleString()}</div>
+        </div>
+        <div class="order-right">
+          ${isApproved
+            ? `<div class="approved-badge">✔ Approved</div>`
+            : `<button class="approve-btn" id="btn-${o.id}" onclick="approveOrder(${o.id})">Approve</button>`
+          }
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function approveOrder(orderId){
+  const btn = document.getElementById("btn-"+orderId);
+  if(btn){ btn.disabled=true; btn.innerText="Approving..."; }
+  try {
+    const res  = await fetch("/api/orders/approve", { method:"POST", headers:{"Content-Type":"application/json",Authorization:"Bearer "+token}, body:JSON.stringify({orderId}) });
+    const data = await res.json();
+    if(!res.ok){ alert(data.message); if(btn){btn.disabled=false;btn.innerText="Approve";} return; }
+    const order = orders.find(o=>o.id===orderId);
+    if(order) order.status="approved";
+    completed = data.completed; total = data.total;
+    updateProgress();
+    const card  = document.getElementById("order-"+orderId);
+    if(card){ card.classList.add("approved"); const right=card.querySelector(".order-right"); if(right) right.innerHTML=`<div class="approved-badge">✔ Approved</div>`; }
+    if(data.allDone){ document.getElementById("allDoneBanner").style.display="block"; window.scrollTo({top:0,behavior:"smooth"}); }
+  } catch(err){ alert("Error approving order."); if(btn){btn.disabled=false;btn.innerText="Approve";} }
+}
+
+function updateProgress(){
+  const percent = total>0?(completed/total)*100:0;
+  document.getElementById("progressBar").style.width  = percent+"%";
+  document.getElementById("progressText").innerText   = `${completed} / ${total}`;
+  document.getElementById("headerCount").innerText    = `${completed}/${total}`;
+  if(completed>=total&&total>0) document.getElementById("allDoneBanner").style.display="block";
+}
+
+loadOrders();
+</script>
+</body>
+</html>

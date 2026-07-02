@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Shop Investments – Velora</title>
+<style>
+body{ margin:0; font-family:Arial; background:#0f172a; color:white; }
+.header{ background:#1e293b; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.container{ padding:20px; max-width:600px; margin:0 auto; }
+
+.summary-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:22px; }
+.summary-box{ background:#1e293b; border-radius:12px; padding:14px 16px; }
+.summary-box .lbl{ font-size:12px; color:#64748b; margin-bottom:4px; }
+.summary-box .val{ font-size:20px; font-weight:bold; }
+.summary-box .val.green{ color:#4ade80; }
+.summary-box .val.blue{ color:#7dd3fc; }
+.summary-box .val.yellow{ color:#fbbf24; }
+
+.filter-tabs{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.tab{ padding:7px 16px; border-radius:20px; font-size:13px; cursor:pointer; border:1px solid #1e4d6b; background:#0f2d45; color:#7dd3fc; }
+.tab.active{ background:#052e16; border-color:#22c55e; color:#4ade80; font-weight:bold; }
+
+.inv-card{
+  background:#1e293b;
+  border-radius:12px;
+  padding:16px 18px;
+  margin-bottom:12px;
+  border-left:3px solid #22c55e;
+}
+.inv-card.ended{ border-left-color:#475569; opacity:0.75; }
+
+.inv-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.inv-shop{ font-size:15px; font-weight:bold; }
+.inv-type{ font-size:12px; color:#94a3b8; margin-top:2px; }
+.inv-status{ font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px; white-space:nowrap; }
+.status-active{ background:#052e16; color:#4ade80; }
+.status-ended{ background:#1c0a0a; color:#f87171; }
+.status-pending{ background:#1c1207; color:#fbbf24; }
+
+.inv-amounts{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+.amt-box{ background:#0a1e2e; border-radius:8px; padding:9px 10px; text-align:center; }
+.amt-box .al{ font-size:11px; color:#475569; margin-bottom:2px; }
+.amt-box .av{ font-size:13px; font-weight:bold; }
+.amt-box .av.green{ color:#4ade80; }
+.amt-box .av.yellow{ color:#fbbf24; }
+
+.progress{ width:100%; height:7px; background:#1e3a52; border-radius:20px; overflow:hidden; }
+.progress-bar{ height:100%; background:#22c55e; border-radius:20px; }
+.progress-info{ display:flex; justify-content:space-between; font-size:11px; color:#475569; margin-top:4px; }
+
+.empty{ text-align:center; padding:40px; color:#64748b; }
+.empty a{ color:#22c55e; text-decoration:none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/shops.html'">← Back to Shops</button>
+  <h2>💼 My Shop Investments</h2>
+  <div></div>
+</div>
+
+<div class="container">
+
+  <div class="summary-grid">
+    <div class="summary-box">
+      <div class="lbl">Total Invested</div>
+      <div class="val blue" id="totalInvested">₦0</div>
+    </div>
+    <div class="summary-box">
+      <div class="lbl">Total Accumulated Profit</div>
+      <div class="val green" id="totalAccumulated">₦0</div>
+    </div>
+    <div class="summary-box">
+      <div class="lbl">Active Investments</div>
+      <div class="val yellow" id="activeCount">0</div>
+    </div>
+    <div class="summary-box">
+      <div class="lbl">Completed Investments</div>
+      <div class="val" id="completedCount">0</div>
+    </div>
+  </div>
+
+  <div class="filter-tabs">
+    <div class="tab active" onclick="setFilter('all', this)">All</div>
+    <div class="tab" onclick="setFilter('active', this)">Active</div>
+    <div class="tab" onclick="setFilter('pending', this)">Pending</div>
+    <div class="tab" onclick="setFilter('ended', this)">Ended</div>
+  </div>
+
+  <div id="investmentsList">
+    <p style="color:#94a3b8; text-align:center; padding:30px;">Loading investments...</p>
+  </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+
+const SHOPS = [
+  { id:1, icon:"🖊",  name:"Shop 1", type:"Stationery Investment",        duration:60,  rate:0.05, displayRate:"5%"  },
+  { id:2, icon:"📱",  name:"Shop 2", type:"Electronics Investment",        duration:120, rate:0.10, displayRate:"10%" },
+  { id:3, icon:"👗",  name:"Shop 3", type:"Fashion & Clothing Investment", duration:210, rate:0.15, displayRate:"15%" },
+  { id:4, icon:"🛒",  name:"Shop 4", type:"Supermarket Investment",        duration:270, rate:0.20, displayRate:"20%" },
+  { id:5, icon:"🏭",  name:"Shop 5", type:"Wholesale Business Investment", duration:365, rate:0.25, displayRate:"25%" },
+];
+
+let allData  = [];
+let curFilter = "all";
+
+async function loadInvestments(){
+  try {
+    const res  = await fetch("/api/shop-invest/my/all", { headers:{ Authorization:"Bearer "+token } });
+    if(res.status===401){ localStorage.removeItem("token"); window.location.href="/login.html"; return; }
+    allData = await res.json();
+    computeSummary();
+    renderList();
+  } catch(err){
+    document.getElementById("investmentsList").innerHTML =
+      `<div class="empty" style="color:#ef4444;">Failed to load investments.</div>`;
+  }
+}
+
+function computeSummary(){
+  const now      = new Date();
+  let totalInv   = 0, totalAcc = 0, activeCount = 0, completedCount = 0;
+
+  allData.forEach(inv => {
+    if(inv.status !== "active") return;
+    const shop       = SHOPS.find(s=>s.id===inv.shopId);
+    if(!shop) return;
+    const start      = new Date(inv.startDate);
+    const daysElapsed = Math.min(Math.floor((now-start)/(1000*60*60*24)), shop.duration);
+    const accumulated = inv.amount * shop.rate * daysElapsed;
+    const isEnded     = daysElapsed >= shop.duration;
+
+    totalInv += Number(inv.amount);
+    totalAcc += accumulated;
+    if(isEnded) completedCount++; else activeCount++;
+  });
+
+  document.getElementById("totalInvested").innerText    = "₦" + totalInv.toLocaleString();
+  document.getElementById("totalAccumulated").innerText = "₦" + totalAcc.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById("activeCount").innerText      = activeCount;
+  document.getElementById("completedCount").innerText   = completedCount;
+}
+
+function setFilter(filter, el){
+  curFilter = filter;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  renderList();
+}
+
+function renderList(){
+  const now = new Date();
+  const el  = document.getElementById("investmentsList");
+
+  let filtered = allData;
+  if(curFilter === "active")  filtered = allData.filter(i => i.status==="active" && !isExpired(i));
+  if(curFilter === "pending") filtered = allData.filter(i => i.status==="pending");
+  if(curFilter === "ended")   filtered = allData.filter(i => i.status==="active" && isExpired(i));
+
+  if(!filtered.length){
+    el.innerHTML = `<div class="empty">
+      No investments found.<br><a href="/shops.html">Browse shops →</a>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(inv => {
+    const shop = SHOPS.find(s=>s.id===inv.shopId);
+    if(!shop) return "";
+
+    if(inv.status === "pending"){
+      return `
+        <div class="inv-card" style="border-left-color:#f59e0b; opacity:0.85;">
+          <div class="inv-header">
+            <div>
+              <div class="inv-shop">${shop.icon} ${shop.name}</div>
+              <div class="inv-type">${shop.type}</div>
+            </div>
+            <div class="inv-status status-pending">⏳ PENDING</div>
+          </div>
+          <div style="font-size:13px; color:#94a3b8;">
+            ₦${Number(inv.amount).toLocaleString()} — Awaiting admin confirmation
+          </div>
+          ${inv.proofNote ? `<div style="font-size:12px; color:#475569; margin-top:4px;">Note: ${inv.proofNote}</div>` : ""}
+        </div>
+      `;
+    }
+
+    const start       = new Date(inv.startDate);
+    const daysElapsed = Math.min(Math.floor((now-start)/(1000*60*60*24)), shop.duration);
+    const daysLeft    = Math.max(shop.duration - daysElapsed, 0);
+    const progress    = Math.min((daysElapsed/shop.duration)*100, 100);
+    const accumulated = inv.amount * shop.rate * daysElapsed;
+    const totalProfit = inv.amount * shop.rate * shop.duration;
+    const ended       = daysElapsed >= shop.duration;
+    const endDate     = new Date(start.getTime() + shop.duration*24*60*60*1000);
+
+    return `
+      <div class="inv-card ${ended?'ended':''}">
+        <div class="inv-header">
+          <div>
+            <div class="inv-shop">${shop.icon} ${shop.name}</div>
+            <div class="inv-type">${shop.type}</div>
+          </div>
+          <div class="inv-status ${ended?'status-ended':'status-active'}">${ended?'✔ COMPLETED':'✔ ACTIVE'}</div>
+        </div>
+        <div class="inv-amounts">
+          <div class="amt-box"><div class="al">Invested</div><div class="av">₦${Number(inv.amount).toLocaleString()}</div></div>
+          <div class="amt-box"><div class="al">Accumulated</div><div class="av green">₦${accumulated.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+          <div class="amt-box"><div class="al">Total at End</div><div class="av yellow">₦${(Number(inv.amount)+totalProfit).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}</div></div>
+        </div>
+        <div class="progress"><div class="progress-bar" style="width:${progress}%"></div></div>
+        <div class="progress-info">
+          <span>${daysElapsed} / ${shop.duration} days</span>
+          <span>${ended ? 'Payout on: '+endDate.toDateString() : daysLeft+' days remaining'}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function isExpired(inv){
+  const shop = SHOPS.find(s=>s.id===inv.shopId);
+  if(!shop) return false;
+  const start = new Date(inv.startDate);
+  const days  = Math.floor((new Date()-start)/(1000*60*60*24));
+  return days >= shop.duration;
+}
+
+loadInvestments();
+</script>
+</body>
+</html>

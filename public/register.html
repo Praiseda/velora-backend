@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velora – Register</title>
+  <style>
+    body{
+      font-family:Arial;
+      background:#0f172a;
+      color:white;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      min-height:100vh;
+      margin:0;
+      padding:20px;
+      box-sizing:border-box;
+    }
+
+    .box{
+      background:#1e293b;
+      padding:30px;
+      border-radius:12px;
+      width:100%;
+      max-width:360px;
+    }
+
+    h2{ margin:0 0 20px; }
+
+    input{
+      width:100%;
+      padding:10px;
+      margin:8px 0;
+      border:1px solid #334155;
+      border-radius:7px;
+      background:#0f172a;
+      color:white;
+      box-sizing:border-box;
+      font-size:14px;
+    }
+
+    input:focus{
+      outline:none;
+      border-color:#22c55e;
+    }
+
+    button{
+      width:100%;
+      padding:11px;
+      background:#22c55e;
+      border:none;
+      color:white;
+      cursor:pointer;
+      border-radius:7px;
+      font-size:15px;
+      margin-top:10px;
+    }
+
+    button:hover{ background:#16a34a; }
+
+    button:disabled{
+      background:#334155;
+      cursor:not-allowed;
+    }
+
+    #msg{
+      margin-top:12px;
+      font-size:13px;
+      text-align:center;
+    }
+
+    .ref-notice{
+      background:#0f172a;
+      border:1px solid #334155;
+      padding:8px 12px;
+      border-radius:7px;
+      font-size:12px;
+      color:#4ade80;
+      margin-bottom:10px;
+      display:none;
+    }
+
+    .login-link{
+      text-align:center;
+      margin-top:15px;
+      font-size:13px;
+      color:#94a3b8;
+    }
+
+    .login-link a{
+      color:#22c55e;
+      text-decoration:none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h2>Create Account</h2>
+
+  <!-- Shown if a referral code is in the URL -->
+  <div class="ref-notice" id="refNotice">
+    🎉 You were referred! Referral code applied.
+  </div>
+
+  <input id="name"     type="text"     placeholder="Full Name" />
+  <input id="email"    type="email"    placeholder="Email" />
+  <input id="password" type="password" placeholder="Password (min 6 chars)" />
+
+  <button id="registerBtn" onclick="register()">Register</button>
+
+  <p id="msg"></p>
+
+  <div class="login-link">
+    Already have an account? <a href="/login.html">Login</a>
+  </div>
+
+</div>
+
+<script>
+
+// Auto-read referral code from URL e.g. /register.html?ref=ABC123
+const urlParams    = new URLSearchParams(window.location.search);
+const referralCode = urlParams.get("ref") || "";
+
+if(referralCode){
+  document.getElementById("refNotice").style.display = "block";
+}
+
+async function register(){
+
+  const fullName = document.getElementById("name").value.trim();
+  const email    = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg      = document.getElementById("msg");
+  const btn      = document.getElementById("registerBtn");
+
+  if(!fullName || !email || !password){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "All fields are required";
+    return;
+  }
+
+  if(password.length < 6){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Password must be at least 6 characters";
+    return;
+  }
+
+  btn.disabled  = true;
+  btn.innerText = "Registering...";
+
+  try {
+
+    const res = await fetch("/api/auth/register", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        fullName,
+        email,
+        password,
+        referralCode  // sends "" if no referral, server ignores it
+      })
+    });
+
+    const data = await res.json();
+
+    if(!res.ok){
+      msg.style.color = "#ef4444";
+      msg.innerText   = data.message || "Registration failed";
+      btn.disabled    = false;
+      btn.innerText   = "Register";
+      return;
+    }
+
+    msg.style.color = "#4ade80";
+    msg.innerText   = "Account created ✔ Redirecting...";
+
+    setTimeout(() => {
+      window.location.href = "/login.html";
+    }, 1000);
+
+  } catch(err) {
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Server error. Please try again.";
+    btn.disabled    = false;
+    btn.innerText   = "Register";
+  }
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Velora Admin</title>
+  <style>
+    body{ background:#081421; color:white; font-family:Arial; padding:20px; }
+    h1,h2{ margin-bottom:10px; }
+    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin-bottom:20px; }
+    .card{ background:#102437; padding:15px; border-radius:10px; }
+    .card h2{ color:#22c55e; margin:5px 0; }
+    table{ width:100%; border-collapse:collapse; margin-top:10px; }
+    th,td{ border:1px solid #2d4d66; padding:10px; font-size:13px; }
+    th{ background:#0d2035; }
+    button{ padding:6px 10px; border:none; cursor:pointer; border-radius:5px; margin:2px; font-size:12px; color:white; }
+    .btn-ban     { background:#dc2626; }
+    .btn-reset   { background:#2563eb; }
+    .btn-end     { background:#b45309; }
+    .btn-bank    { background:#6d28d9; }
+    .btn-withdraw{ background:#0e7490; }
+    .btn-approve { background:#16a34a; }
+    .btn-reject  { background:#dc2626; }
+    .btn-nav     { background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; font-size:13px; display:inline-flex; gap:8px; align-items:center; margin-top:12px; }
+    .btn-nav:hover{ background:#163a54; }
+    hr{ border-color:#1e3a52; margin:25px 0; }
+    .empty{ color:#94a3b8; font-size:13px; padding:10px 0; }
+    .search-bar{ display:flex; gap:10px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
+    .search-bar input{ padding:8px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; width:260px; }
+    .search-bar input:focus{ outline:none; border-color:#22c55e; }
+    .search-bar button{ background:#1e4d6b; color:#7dd3fc; border:1px solid #2d6a8f; padding:8px 14px; border-radius:7px; }
+    input[type="date"]{ padding:8px; border-radius:6px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; }
+    label{ font-size:12px; color:#94a3b8; display:block; margin-bottom:4px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<h1>📊 Velora Admin Dashboard
+  <button onclick="refreshAll()" style="font-size:13px;padding:6px 14px;background:#1e4d6b;color:white;border:none;border-radius:6px;cursor:pointer;margin-left:15px;vertical-align:middle;">🔄 Refresh</button>
+  <button onclick="logout()" style="font-size:13px;padding:6px 14px;background:#dc2626;color:white;border:none;border-radius:6px;cursor:pointer;margin-left:8px;vertical-align:middle;">Logout</button>
+</h1>
+
+<!-- STATS -->
+<div class="grid">
+  <div class="card"><h3>Total Users</h3><h2 id="totalUsers">—</h2></div>
+  <div class="card"><h3>Total Wallet</h3><h2 id="totalWallet">₦—</h2></div>
+  <div class="card"><h3>Total Fund Deposit Wallet</h3><h2 id="totalFundDepositWallet" style="color:#7dd3fc;">₦—</h2></div>
+  <div class="card"><h3>Total Withdrawn</h3><h2 id="totalWithdrawals">₦—</h2></div>
+  <div class="card"><h3>Total Investments</h3><h2 id="totalInvestments">—</h2></div>
+  <div class="card"><h3>Referral Bonuses</h3><h2 id="totalReferral">₦—</h2></div>
+  <div class="card"><h3>In-Shop Investments</h3><h2 id="totalShopInvest">₦—</h2></div>
+  <div class="card"><h3>Active Shop Inv.</h3><h2 id="activeShopCount" style="color:#7dd3fc;">—</h2></div>
+</div>
+
+<hr>
+
+<!-- USERS -->
+<h2>👥 Users</h2>
+<div class="search-bar">
+  <input type="text" id="userSearch" placeholder="Search by email..." oninput="filterUsers()">
+  <button onclick="filterUsers()">Search</button>
+  <button onclick="clearSearch()">Clear</button>
+</div>
+<table>
+  <thead><tr><th>Email</th><th>Wallet</th><th>Plan</th><th>Status</th><th>Admin</th><th>Actions</th></tr></thead>
+  <tbody id="usersTable"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+</table>
+<button class="btn-nav" onclick="window.location.href='/admin-users.html'"><span>View All Users</span><span>→</span></button>
+
+<hr>
+
+<!-- WITHDRAWALS -->
+<h2>💸 Withdrawal Requests</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 8px;">
+  <strong style="color:#fbbf24;">Approve</strong> = mark as paid (money already left wallet).
+  <strong style="color:#ef4444;">Reject</strong> = decline and refund amount back to user's wallet.
+</p>
+<table>
+  <thead><tr><th>Email</th><th>Amount</th><th>Bank</th><th>Account Name</th><th>Account No.</th><th>Status</th><th>Approve / Reject</th></tr></thead>
+  <tbody id="withdrawTable"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+</table>
+<button class="btn-nav" onclick="window.location.href='/admin-withdrawals.html'"><span>View All Withdrawal Requests</span><span>→</span></button>
+
+<hr>
+
+<!-- ANNOUNCEMENT -->
+<h2>📢 Announcement</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">
+  Type a message and publish it. It will appear as a banner on all users' dashboards immediately. Clear it when no longer needed.
+</p>
+<div class="card" style="max-width:600px;">
+  <div id="announceStatus" style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Loading...</div>
+  <textarea id="announceText"
+    placeholder="Type your announcement here..."
+    style="width:100%; padding:10px; border:1px solid #1e4d6b; border-radius:7px; background:#0a1e2e; color:white; font-size:13px; box-sizing:border-box; resize:vertical; min-height:80px;">
+  </textarea>
+  <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+    <button onclick="publishAnnouncement()" style="background:#22c55e; color:white; padding:9px 20px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:bold;">
+      Publish Announcement
+    </button>
+    <button onclick="clearAnnouncement()" style="background:#374151; color:#e2e8f0; padding:9px 16px; border:none; border-radius:7px; cursor:pointer; font-size:13px;">
+      Clear Announcement
+    </button>
+  </div>
+</div>
+
+<hr>
+
+<!-- PAYMENT BANK DETAILS -->
+<h2>🏦 Payment Bank Details</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">
+  These are the bank details shown to users when they want to fund their deposit wallet. Keep this up to date.
+</p>
+<div class="card" style="max-width:520px;">
+  <div id="adminBankStatus" style="font-size:13px; color:#94a3b8; margin-bottom:12px;">Loading...</div>
+  <div style="display:flex; flex-direction:column; gap:10px;">
+    <div>
+      <label>Bank Name</label>
+      <select id="adminBankName" style="width:100%; padding:9px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px;">
+        <option value="">-- Select Bank --</option>
+        <option>Access Bank</option><option>Citibank</option><option>Ecobank</option>
+        <option>FCMB</option><option>Fidelity Bank</option><option>First Bank</option>
+        <option>GTBank</option><option>Heritage Bank</option><option>Jaiz Bank</option>
+        <option>Keystone Bank</option><option>Kuda Bank</option><option>Moniepoint</option>
+        <option>Opay</option><option>Palmpay</option><option>Polaris Bank</option>
+        <option>Providus Bank</option><option>Stanbic IBTC</option><option>Standard Chartered</option>
+        <option>Sterling Bank</option><option>SunTrust Bank</option><option>UBA</option>
+        <option>Union Bank</option><option>Unity Bank</option><option>Wema Bank</option>
+        <option>Zenith Bank</option>
+      </select>
+    </div>
+    <div>
+      <label>Account Name</label>
+      <input type="text" id="adminAccountName" placeholder="Account name" style="width:100%; padding:9px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; box-sizing:border-box;">
+    </div>
+    <div>
+      <label>Account Number</label>
+      <input type="text" id="adminAccountNumber" placeholder="10-digit account number" maxlength="10" style="width:100%; padding:9px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; box-sizing:border-box;">
+    </div>
+    <button onclick="saveAdminBankDetails()" style="background:#22c55e; color:white; padding:10px 20px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:bold; align-self:flex-start;">
+      Save Bank Details
+    </button>
+  </div>
+</div>
+
+<hr>
+
+<!-- TASK BLACKOUT -->
+<h2>📅 Task Blackout (Holiday)</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">During the blackout period, no tasks or orders will be available to any user.</p>
+<div class="card" style="max-width:540px;">
+  <div id="blackoutStatus" style="font-size:13px;color:#94a3b8;margin-bottom:12px;">Loading...</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div><label>Start Date</label><input type="date" id="blackoutStart"></div>
+    <div><label>End Date</label><input type="date" id="blackoutEnd"></div>
+    <button onclick="setBlackout()" style="background:#b45309;color:white;padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Set Blackout</button>
+    <button onclick="clearBlackout()" style="background:#374151;color:#e2e8f0;padding:8px 14px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Clear</button>
+  </div>
+</div>
+
+<hr>
+
+<!-- PLAN WITHDRAWAL DAYS -->
+<h2>📅 Plan Withdrawal Days</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 14px;">
+  Set which day of the week each plan tier can withdraw. Set to <strong>Any Day</strong> for no restriction.
+  Users will be blocked from withdrawing on any other day.
+</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;max-width:860px;" id="planWithdrawDayCards">
+  Loading...
+</div>
+
+<hr>
+
+<!-- WITHDRAWAL SCHEDULE -->
+<h2>🔁 Withdrawal Schedule</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">
+  Set a date range for <strong>Main Wallet</strong> withdrawals. After the end date, the system automatically switches to <strong>Referral</strong> withdrawals.
+</p>
+<div class="card" style="max-width:640px;">
+  <div id="withdrawModeStatus" style="font-size:13px;margin-bottom:14px;color:#94a3b8;">Loading...</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div><label>Main Wallet: Start Date</label><input type="date" id="withdrawStart"></div>
+    <div><label>Main Wallet: End Date</label><input type="date" id="withdrawEnd"></div>
+    <button onclick="setWithdrawSchedule()" style="background:#22c55e;color:white;padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;">Set Schedule</button>
+    <button onclick="clearWithdrawSchedule()" style="background:#374151;color:#e2e8f0;padding:8px 14px;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Clear</button>
+  </div>
+  <p style="font-size:11px;color:#475569;margin-top:10px;line-height:1.6;">
+    During range: <strong style="color:#22c55e;">Main wallet</strong> ON, Referral OFF. &nbsp;|&nbsp;
+    Outside range: <strong style="color:#a78bfa;">Referral</strong> ON, Main wallet OFF.
+  </p>
+</div>
+
+<hr>
+
+<!-- MANUAL DEPOSIT REQUESTS -->
+<h2>📥 Manual Deposit Requests</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">
+  Users submit deposit requests to fund their <strong style="color:#7dd3fc;">deposit wallet</strong>. <strong style="color:#16a34a;">Confirm</strong> credits their deposit wallet (not main wallet). <strong style="color:#dc2626;">Reject</strong> dismisses without crediting.
+</p>
+<table>
+  <thead><tr><th>Email</th><th>Amount</th><th>Plan</th><th>Proof / Note</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+  <tbody id="depositRequestsTable"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+</table>
+<button class="btn-nav" onclick="window.location.href='/admin-deposits.html'"><span>View All Deposit Requests</span><span>→</span></button>
+
+<!-- SINGLE SCRIPT BLOCK AT THE BOTTOM -->
+<script>
+
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+
+let allUsers = [];
+
+// ── LOGOUT ─────────────────────────────────────────────────
+function logout(){
+  localStorage.removeItem("token");
+  window.location.href = "/login.html";
+}
+
+// ── REFRESH ALL ────────────────────────────────────────────
+function refreshAll(){
+  loadAnalytics();
+  loadUsers();
+  loadWithdrawals();
+  loadBlackoutStatus();
+  loadWithdrawMode();
+  loadDepositRequests();
+  loadShopInvestments();
+  loadAdminBankDetails();
+  loadAnnouncementStatus();
+  loadShopFills();
+  loadPlanWithdrawDays();
+}
+
+// ── ANALYTICS ──────────────────────────────────────────────
+async function loadAnalytics(){
+  try {
+    const res = await fetch("/api/admin/analytics", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+    if(res.status===401||res.status===403){
+      alert("Access denied"); window.location.href="/login.html"; return;
+    }
+    const data = await res.json();
+    document.getElementById("totalUsers").innerText       = data.totalUsers;
+    document.getElementById("totalWallet").innerText      = "₦" + Number(data.totalWallet).toLocaleString();
+    document.getElementById("totalFundDepositWallet").innerText = "₦" + Number(data.totalFundDepositWallet||0).toLocaleString();
+    document.getElementById("totalWithdrawals").innerText = "₦" + Number(data.totalWithdrawals).toLocaleString();
+    document.getElementById("totalInvestments").innerText = data.totalInvestments;
+    document.getElementById("totalReferral").innerText    = "₦" + Number(data.totalReferral).toLocaleString();
+  } catch(err){ console.error("Analytics error", err); }
+}
+
+// ── USERS ──────────────────────────────────────────────────
+async function loadUsers(){
+  try {
+    const res  = await fetch("/api/admin/users", { headers:{ Authorization:"Bearer "+token } });
+    allUsers   = await res.json();
+    renderUsers(allUsers);
+  } catch(err){ console.error("Users error", err); }
+}
+
+function renderUsers(data){
+  const table = document.getElementById("usersTable");
+  if(!data.length){ table.innerHTML=`<tr><td colspan="6" class="empty">No users found.</td></tr>`; return; }
+  table.innerHTML = data.map(u=>`
+    <tr>
+      <td>${u.email}</td>
+      <td>₦${(u.walletBalance||0).toLocaleString()}</td>
+      <td>${u.plan||"Starter"}</td>
+      <td>${u.isBlocked?"❌ Banned":"✅ Active"}</td>
+      <td>${u.isAdmin?"👑 Admin":"User"}</td>
+      <td>
+        <button class="btn-ban"      onclick="toggleBan('${u.email}')">${u.isBlocked?"Unban":"Ban"}</button>
+        <button class="btn-reset"    onclick="resetPassword('${u.email}')">Reset PW</button>
+        <button class="btn-withdraw" onclick="resetWithdrawPassword('${u.email}')">Reset W.PW</button>
+        <button class="btn-end"      onclick="endInvestment('${u.email}')">End Plan</button>
+        <button class="btn-bank"     onclick="resetBank('${u.email}')">Reset Bank</button>
+      </td>
+    </tr>`).join("");
+}
+
+function filterUsers(){
+  const q = document.getElementById("userSearch").value.trim().toLowerCase();
+  renderUsers(q ? allUsers.filter(u=>u.email.toLowerCase().includes(q)) : allUsers);
+}
+function clearSearch(){ document.getElementById("userSearch").value=""; renderUsers(allUsers); }
+
+// ── BAN / UNBAN ────────────────────────────────────────────
+async function toggleBan(email){
+  if(!confirm(`Toggle ban for ${email}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/user/toggle-ban",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+    const data = await res.json(); alert(data.message); loadUsers();
+  } catch(err){ alert("Error banning user"); }
+}
+
+// ── RESET LOGIN PASSWORD ───────────────────────────────────
+async function resetPassword(email){
+  if(!confirm(`Reset login password for ${email}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/reset-password",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+    const data = await res.json(); alert(`Temp password: ${data.tempPassword}`);
+  } catch(err){ alert("Error resetting password"); }
+}
+
+// ── RESET WITHDRAWAL PASSWORD ──────────────────────────────
+async function resetWithdrawPassword(email){
+  if(!confirm(`Reset withdrawal password for ${email}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/reset-withdraw-password",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+    const data = await res.json(); alert(data.message);
+  } catch(err){ alert("Error resetting withdrawal password"); }
+}
+
+// ── RESET BANK DETAILS ─────────────────────────────────────
+async function resetBank(email){
+  if(!confirm(`Reset bank details for ${email}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/user/reset-bank",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+    const data = await res.json(); alert(data.message);
+  } catch(err){ alert("Error resetting bank details"); }
+}
+
+// ── END INVESTMENT ─────────────────────────────────────────
+async function endInvestment(email){
+  if(!confirm(`End active investment for ${email}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/invest/end",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({email})});
+    const data = await res.json(); alert(data.message); loadUsers();
+  } catch(err){ alert("Error ending investment"); }
+}
+
+// ── WITHDRAWALS ────────────────────────────────────────────
+async function loadWithdrawals(){
+  try {
+    const res   = await fetch("/api/admin/withdrawals", { headers:{ Authorization:"Bearer "+token } });
+    const data  = await res.json();
+    const table = document.getElementById("withdrawTable");
+    if(!data.length){ table.innerHTML=`<tr><td colspan="7" class="empty">No withdrawals found.</td></tr>`; return; }
+    table.innerHTML = data.map(w=>`
+      <tr>
+        <td>${w.email}</td>
+        <td>₦${Number(w.amount).toLocaleString()}</td>
+        <td>${w.bankName||'<span style="color:#ef4444;">Not set</span>'}</td>
+        <td>${w.accountName||'<span style="color:#ef4444;">Not set</span>'}</td>
+        <td>${w.accountNumber||'<span style="color:#ef4444;">Not set</span>'}</td>
+        <td>${w.status}</td>
+        <td>${w.status==="pending"?`
+          <button class="btn-approve" onclick="approve(${w.id})">Approve</button>
+          <button class="btn-reject"  onclick="reject('${w.email}',${w.amount},${w.id})">Reject</button>
+        `:"—"}</td>
+      </tr>`).join("");
+  } catch(err){ console.error("Withdrawals error", err); }
+}
+
+async function approve(id){
+  if(!confirm("Approve this withdrawal? This marks it as paid.")) return;
+  try {
+    await fetch("/api/admin/withdraw/approve",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+    loadWithdrawals();
+  } catch(err){ alert("Approve error"); }
+}
+
+async function reject(email,amount,id){
+  if(!confirm(`Reject and refund ₦${Number(amount).toLocaleString()} to ${email}?`)) return;
+  try {
+    await fetch("/api/admin/withdraw/reject",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id,email,amount})});
+    loadWithdrawals();
+  } catch(err){ alert("Reject error"); }
+}
+
+// ── TASK BLACKOUT ──────────────────────────────────────────
+async function loadBlackoutStatus(){
+  try {
+    const res  = await fetch("/api/admin/settings", { headers:{ Authorization:"Bearer "+token } });
+    const data = await res.json();
+    const el   = document.getElementById("blackoutStatus");
+    const start = data.taskBlackoutStart, end = data.taskBlackoutEnd;
+    if(start && end && start!=="null" && end!=="null"){
+      el.style.color = "#f59e0b";
+      el.innerText   = `⚠ Active blackout: ${start} → ${end}. Tasks disabled for all users during this period.`;
+      document.getElementById("blackoutStart").value = start;
+      document.getElementById("blackoutEnd").value   = end;
+    } else {
+      el.style.color = "#4ade80";
+      el.innerText   = "✔ No blackout active. Tasks running normally.";
+    }
+  } catch(err){ console.error("Blackout status error", err); }
+}
+
+async function setBlackout(){
+  const start = document.getElementById("blackoutStart").value;
+  const end   = document.getElementById("blackoutEnd").value;
+  if(!start||!end) return alert("Please select both start and end dates");
+  if(start>end)    return alert("Start date must be before end date");
+  if(!confirm(`Set task blackout from ${start} to ${end}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/task-blackout",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({startDate:start,endDate:end})});
+    const data = await res.json(); alert(data.message); loadBlackoutStatus();
+  } catch(err){ alert("Error setting blackout"); }
+}
+
+async function clearBlackout(){
+  if(!confirm("Clear the task blackout? Tasks will resume.")) return;
+  try {
+    const res  = await fetch("/api/admin/task-blackout/clear",{method:"POST",headers:{Authorization:"Bearer "+token}});
+    const data = await res.json(); alert(data.message);
+    document.getElementById("blackoutStart").value="";
+    document.getElementById("blackoutEnd").value="";
+    loadBlackoutStatus();
+  } catch(err){ alert("Error clearing blackout"); }
+}
+
+// ── WITHDRAWAL SCHEDULE ────────────────────────────────────
+async function loadWithdrawMode(){
+  try {
+    const res  = await fetch("/api/admin/settings", { headers:{ Authorization:"Bearer "+token } });
+    const data = await res.json();
+    applyWithdrawScheduleUI(data.withdrawStart, data.withdrawEnd);
+  } catch(err){ console.error("Withdraw schedule error", err); }
+}
+
+function applyWithdrawScheduleUI(start, end){
+  const el    = document.getElementById("withdrawModeStatus");
+  const today = new Date().toISOString().split("T")[0];
+  if(start && end && start!=="null" && end!=="null"){
+    document.getElementById("withdrawStart").value = start;
+    document.getElementById("withdrawEnd").value   = end;
+    if(today>=start && today<=end){
+      el.style.color = "#4ade80";
+      el.innerText   = `✔ ACTIVE: Main wallet withdrawals ON (${start} → ${end}). Referral withdrawals OFF.`;
+    } else if(today>end){
+      el.style.color = "#a78bfa";
+      el.innerText   = `Schedule ended (${end}). Referral withdrawals now ON. Main wallet OFF.`;
+    } else {
+      el.style.color = "#fbbf24";
+      el.innerText   = `⏳ Scheduled: Main wallet will be ON from ${start} to ${end}. Currently: Referral ON.`;
+    }
+  } else {
+    el.style.color = "#a78bfa";
+    el.innerText   = "No schedule set. Referral withdrawals are ON by default. Main wallet is OFF.";
+  }
+}
+
+async function setWithdrawSchedule(){
+  const start = document.getElementById("withdrawStart").value;
+  const end   = document.getElementById("withdrawEnd").value;
+  if(!start||!end) return alert("Please select both start and end dates");
+  if(start>end)    return alert("Start date must be before end date");
+  if(!confirm(`Enable main wallet withdrawals from ${start} to ${end}?\nReferral withdrawals will be OFF during this period.`)) return;
+  try {
+    const res  = await fetch("/api/admin/withdrawal-schedule",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({startDate:start,endDate:end})});
+    const data = await res.json(); alert(data.message); loadWithdrawMode();
+  } catch(err){ alert("Error setting schedule"); }
+}
+
+async function clearWithdrawSchedule(){
+  if(!confirm("Clear withdrawal schedule? Referral withdrawals will become active.")) return;
+  try {
+    const res  = await fetch("/api/admin/withdrawal-schedule/clear",{method:"POST",headers:{Authorization:"Bearer "+token}});
+    const data = await res.json(); alert(data.message);
+    document.getElementById("withdrawStart").value="";
+    document.getElementById("withdrawEnd").value="";
+    loadWithdrawMode();
+  } catch(err){ alert("Error clearing schedule"); }
+}
+
+// ── MANUAL DEPOSIT REQUESTS ────────────────────────────────
+async function loadDepositRequests(){
+  try {
+    const res   = await fetch("/api/admin/deposit-requests", { headers:{ Authorization:"Bearer "+token } });
+    const data  = await res.json();
+    const table = document.getElementById("depositRequestsTable");
+    if(!data.length){ table.innerHTML=`<tr><td colspan="7" class="empty">No deposit requests yet.</td></tr>`; return; }
+    table.innerHTML = data.map(d=>{
+      const date   = d.createdAt ? new Date(d.createdAt).toLocaleString() : "—";
+      const sColor = d.status==="confirmed"?"#4ade80":d.status==="rejected"?"#ef4444":"#fbbf24";
+      return `<tr>
+        <td>${d.email}</td>
+        <td>₦${Number(d.amount).toLocaleString()}</td>
+        <td>${d.planName}</td>
+        <td style="max-width:160px;word-break:break-word;">${d.proofNote||"—"}</td>
+        <td style="font-size:11px;">${date}</td>
+        <td style="color:${sColor};font-weight:bold;">${d.status.toUpperCase()}</td>
+        <td>${d.status==="pending"?`
+          <button class="btn-approve" onclick="confirmDeposit(${d.id})">Confirm</button>
+          <button class="btn-reject"  onclick="rejectDeposit(${d.id})">Reject</button>
+        `:"—"}</td>
+      </tr>`;
+    }).join("");
+  } catch(err){ console.error("Deposit requests error", err); }
+}
+
+async function confirmDeposit(id){
+  if(!confirm("Confirm this deposit? Amount will be credited to the user's wallet immediately.")) return;
+  try {
+    const res  = await fetch("/api/admin/deposit-request/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+    const data = await res.json(); alert(data.message); loadDepositRequests(); loadAnalytics();
+  } catch(err){ alert("Confirm error"); }
+}
+
+async function rejectDeposit(id){
+  if(!confirm("Reject this deposit request? No amount will be credited.")) return;
+  try {
+    const res  = await fetch("/api/admin/deposit-request/reject",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+    const data = await res.json(); alert(data.message); loadDepositRequests();
+  } catch(err){ alert("Reject error"); }
+}
+
+// ── ADMIN PAYMENT BANK DETAILS ────────────────────────────
+async function loadAdminBankDetails(){
+  try {
+    const res  = await fetch("/api/admin/bank-details", { headers:{ Authorization:"Bearer "+token } });
+    const data = await res.json();
+    const el   = document.getElementById("adminBankStatus");
+    if(data.bankName){
+      el.style.color = "#4ade80";
+      el.innerText   = `✔ ${data.bankName} — ${data.accountName} (${data.accountNumber})`;
+      document.getElementById("adminBankName").value      = data.bankName;
+      document.getElementById("adminAccountName").value   = data.accountName;
+      document.getElementById("adminAccountNumber").value = data.accountNumber;
+    } else {
+      el.style.color = "#f59e0b";
+      el.innerText   = "⚠ No payment bank details set yet. Users won't see transfer instructions.";
+    }
+  } catch(err){ console.error("Admin bank details error", err); }
+}
+
+async function saveAdminBankDetails(){
+  const bankName      = document.getElementById("adminBankName").value.trim();
+  const accountName   = document.getElementById("adminAccountName").value.trim();
+  const accountNumber = document.getElementById("adminAccountNumber").value.trim();
+  if(!bankName || !accountName || !accountNumber)
+    return alert("Please fill in all bank details");
+  if(!/^\d{10}$/.test(accountNumber))
+    return alert("Account number must be exactly 10 digits");
+  try {
+    const res  = await fetch("/api/admin/bank-details", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer "+token },
+      body: JSON.stringify({ bankName, accountName, accountNumber })
+    });
+    const data = await res.json();
+    alert(data.message);
+    if(res.ok) loadAdminBankDetails();
+  } catch(err){ alert("Error saving bank details"); }
+}
+
+// ── SHOP FILL SETTINGS ────────────────────────────────────
+const SHOP_NAMES = {
+  1:"Shop 1 – Stationery", 2:"Shop 2 – Electronics",
+  3:"Shop 3 – Fashion",    4:"Shop 4 – Supermarket",
+  5:"Shop 5 – Wholesale"
+};
+const SHOP_ICONS = { 1:"🖊", 2:"📱", 3:"👗", 4:"🛒", 5:"🏭" };
+
+async function loadShopFills(){
+  try {
+    const res   = await fetch("/api/shop-fills", { headers:{ Authorization:"Bearer "+token } });
+    const fills = await res.json();
+    const el    = document.getElementById("shopFillCards");
+
+    el.innerHTML = [1,2,3,4,5].map(id => {
+      const fill    = fills[id] || { percent:0, totalSlots:0 };
+      const pct     = fill.percent    || 0;
+      const slots   = fill.totalSlots || 0;
+      const filled  = Math.round(slots * pct / 100);
+      return `
+        <div class="card">
+          <div style="font-size:14px; font-weight:bold; margin-bottom:10px;">
+            ${SHOP_ICONS[id]} ${SHOP_NAMES[id]}
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            <div style="flex:1;">
+              <div style="background:#1e3a52; border-radius:20px; height:10px; overflow:hidden;">
+                <div style="height:100%; width:${pct}%; background:#22c55e; border-radius:20px; transition:width 0.4s;"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; color:#475569; margin-top:4px;">
+                <span>${filled.toLocaleString()} filled</span>
+                <span>${slots.toLocaleString()} total</span>
+              </div>
+            </div>
+            <span style="font-size:18px; font-weight:bold; color:#22c55e; white-space:nowrap;">${pct}%</span>
+          </div>
+          <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+            <div>
+              <label style="font-size:11px; color:#64748b; display:block; margin-bottom:3px;">Fill %</label>
+              <input type="number" id="pct_${id}" value="${pct}" min="0" max="100"
+                style="width:70px; padding:7px 8px; border-radius:6px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px;">
+            </div>
+            <div>
+              <label style="font-size:11px; color:#64748b; display:block; margin-bottom:3px;">Total slots</label>
+              <input type="number" id="slots_${id}" value="${slots}" min="1"
+                style="width:90px; padding:7px 8px; border-radius:6px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px;">
+            </div>
+            <button onclick="saveShopFill(${id})"
+              style="background:#22c55e; color:white; padding:8px 14px; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">
+              Save
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch(err){ console.error("Shop fill error", err); }
+}
+
+async function saveShopFill(shopId){
+  const percent    = document.getElementById("pct_"+shopId).value;
+  const totalSlots = document.getElementById("slots_"+shopId).value;
+  if(percent === "" || totalSlots === "") return alert("Please fill in both fields");
+  try {
+    const res  = await fetch("/api/admin/shop-fill", {
+      method:"POST",
+      headers:{"Content-Type":"application/json", Authorization:"Bearer "+token},
+      body: JSON.stringify({ shopId, percent: Number(percent), totalSlots: Number(totalSlots) })
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadShopFills();
+  } catch(err){ alert("Error saving"); }
+}
+
+// ── ANNOUNCEMENTS ─────────────────────────────────────────
+async function loadAnnouncementStatus(){
+  try {
+    const res  = await fetch("/api/announcement", { headers:{ Authorization:"Bearer "+token } });
+    const data = await res.json();
+    const el   = document.getElementById("announceStatus");
+    if(data.active){
+      el.style.color = "#4ade80";
+      el.innerText   = `✔ Active: "${data.text.substring(0,80)}${data.text.length>80?"...":""}"`;
+      document.getElementById("announceText").value = data.text;
+    } else {
+      el.style.color = "#94a3b8";
+      el.innerText   = "No active announcement.";
+      document.getElementById("announceText").value = "";
+    }
+  } catch(err){ console.error(err); }
+}
+
+async function publishAnnouncement(){
+  const text = document.getElementById("announceText").value.trim();
+  if(!text) return alert("Please type an announcement");
+  if(!confirm("Publish this announcement to all users?")) return;
+  try {
+    const res  = await fetch("/api/admin/announcement",{
+      method:"POST",
+      headers:{"Content-Type":"application/json", Authorization:"Bearer "+token},
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadAnnouncementStatus();
+  } catch(err){ alert("Error publishing"); }
+}
+
+async function clearAnnouncement(){
+  if(!confirm("Clear the announcement? It will disappear from all dashboards.")) return;
+  try {
+    const res  = await fetch("/api/admin/announcement/clear",{
+      method:"POST",
+      headers:{ Authorization:"Bearer "+token }
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadAnnouncementStatus();
+  } catch(err){ alert("Error clearing"); }
+}
+
+// ── INIT ───────────────────────────────────────────────────
+loadAnalytics();
+loadUsers();
+loadWithdrawals();
+loadBlackoutStatus();
+loadWithdrawMode();
+loadDepositRequests();
+loadAdminBankDetails();
+
+
+// ── SHOP INVESTMENTS ───────────────────────────────────────
+async function loadShopInvestments(){
+  try {
+    // Load stats
+    const statsRes  = await fetch("/api/admin/shop-invest/stats", { headers:{ Authorization:"Bearer "+token } });
+    const stats     = await statsRes.json();
+    document.getElementById("totalShopInvest").innerText = "₦" + Number(stats.activeAmount||0).toLocaleString();
+    document.getElementById("activeShopCount").innerText = (stats.activeCount||0) + " active";
+
+    // Load requests table
+    const res   = await fetch("/api/admin/shop-investments", { headers:{ Authorization:"Bearer "+token } });
+    const data  = await res.json();
+    const table = document.getElementById("shopInvestTable");
+
+    if(!data.length){ table.innerHTML=`<tr><td colspan="7" class="empty">No shop investment requests yet.</td></tr>`; return; }
+
+    const SHOPS = {
+      1:"Shop 1 – Stationery", 2:"Shop 2 – Electronics",
+      3:"Shop 3 – Fashion",    4:"Shop 4 – Supermarket", 5:"Shop 5 – Wholesale"
+    };
+    const DURATIONS = { 1:60, 2:120, 3:210, 4:270, 5:365 };
+    const RATES     = { 1:0.05, 2:0.10, 3:0.15, 4:0.20, 5:0.25 };
+
+    table.innerHTML = data.slice(0,10).map(inv => {
+      const date   = inv.createdAt ? new Date(inv.createdAt).toLocaleString() : "—";
+      const sColor = inv.status==="active"?"#4ade80":inv.status==="paid_out"?"#7dd3fc":inv.status==="rejected"?"#ef4444":"#fbbf24";
+      let accum = "—";
+      if(inv.status==="active" && inv.startDate){
+        const days = Math.min(Math.floor((new Date()-new Date(inv.startDate))/(1000*60*60*24)), DURATIONS[inv.shopId]||60);
+        accum = "₦" + (Number(inv.amount) * (RATES[inv.shopId]||0.05) * days).toLocaleString(undefined,{maximumFractionDigits:2});
+      }
+      return `<tr>
+        <td>${inv.email}</td>
+        <td>${SHOPS[inv.shopId]||"Shop "+inv.shopId}</td>
+        <td>₦${Number(inv.amount).toLocaleString()}</td>
+        <td style="color:#4ade80;">${accum}</td>
+        <td style="font-size:11px;">${date}</td>
+        <td style="color:${sColor};font-weight:bold;">${inv.status.toUpperCase()}</td>
+        <td>—</td>
+      </tr>`;
+    }).join("");
+  } catch(err){ console.error("Shop invest error", err); }
+}
+
+async function confirmShopInvest(id){
+  if(!confirm("Confirm this shop investment? It will start accumulating profit immediately.")) return;
+  try {
+    const res  = await fetch("/api/admin/shop-invest/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+    const data = await res.json(); alert(data.message); loadShopInvestments();
+  } catch(err){ alert("Confirm error"); }
+}
+
+async function rejectShopInvest(id){
+  if(!confirm("Reject this shop investment request?")) return;
+  try {
+    const res  = await fetch("/api/admin/shop-invest/reject",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+    const data = await res.json(); alert(data.message); loadShopInvestments();
+  } catch(err){ alert("Reject error"); }
+}
+
+// Add to init and refresh
+loadShopInvestments();
+loadPlanWithdrawDays();
+
+// ── PLAN WITHDRAWAL DAYS ──────────────────────────────────
+const DAY_NAMES_WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+
+async function loadPlanWithdrawDays(){
+  try {
+    const res  = await fetch("/api/plan-withdraw-days", { headers:{ Authorization:"Bearer "+token } });
+    if(!res.ok) return;
+    const data = await res.json();
+    const el   = document.getElementById("planWithdrawDayCards");
+    if(!el) return;
+
+    const plans = [
+      { name:"Starter", color:"#7dd3fc" },
+      { name:"Silver",  color:"#e2e8f0" },
+      { name:"Gold",    color:"#fbbf24" },
+      { name:"VIP",     color:"#d8b4fe" },
+    ];
+
+    el.innerHTML = plans.map(p => {
+      const current = data[p.name] || "any";
+      const label   = current === "any" ? "Any Day" : DAY_NAMES_WD[Number(current)];
+      return `
+        <div class="card">
+          <div style="font-size:14px;font-weight:bold;color:${p.color};margin-bottom:8px;">${p.name} Plan</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px;">
+            Current: <strong style="color:${p.color};">${label}</strong>
+          </div>
+          <select id="wday_${p.name}"
+            style="width:100%;padding:8px;border-radius:7px;border:1px solid #1e4d6b;background:#0a1e2e;color:white;font-size:13px;margin-bottom:10px;">
+            <option value="any" ${current==="any"?"selected":""}>Any Day (no restriction)</option>
+            <option value="1"   ${current==="1"?"selected":""}>Monday</option>
+            <option value="2"   ${current==="2"?"selected":""}>Tuesday</option>
+            <option value="3"   ${current==="3"?"selected":""}>Wednesday</option>
+            <option value="4"   ${current==="4"?"selected":""}>Thursday</option>
+            <option value="5"   ${current==="5"?"selected":""}>Friday</option>
+            <option value="6"   ${current==="6"?"selected":""}>Saturday</option>
+            <option value="0"   ${current==="0"?"selected":""}>Sunday</option>
+          </select>
+          <button onclick="savePlanWithdrawDay('${p.name}')"
+            style="width:100%;background:#22c55e;color:white;padding:8px;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:bold;">
+            Save
+          </button>
+        </div>`;
+    }).join("");
+  } catch(err){ console.error("Plan withdraw day error", err); }
+}
+
+async function savePlanWithdrawDay(plan){
+  const day   = document.getElementById("wday_"+plan).value;
+  const label = day === "any" ? "Any Day" : DAY_NAMES_WD[Number(day)];
+  if(!confirm(`Set ${plan} plan withdrawals to: ${label}?`)) return;
+  try {
+    const res  = await fetch("/api/admin/plan-withdraw-day",{
+      method:"POST",
+      headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+      body: JSON.stringify({ plan, day })
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadPlanWithdrawDays();
+  } catch(err){ alert("Error saving"); }
+}
+
+</script>
+
+<hr>
+
+<!-- SHOP FILL SETTINGS -->
+<h2>📊 Shop Fill Settings</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 14px;">
+  Set the fill percentage and total investment slots for each shop. Only the percentage ring is shown to users.
+</p>
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; max-width:900px;" id="shopFillCards">
+  Loading...
+</div>
+
+<hr>
+
+<!-- IN-SHOP INVESTMENTS -->
+<h2>🏪 In-Shop Investment Requests</h2>
+<p style="font-size:13px;color:#94a3b8;margin:0 0 10px;">
+  Shop investments are auto-approved — they start immediately when a user submits. Profit accumulates daily and is auto-paid to the user's wallet at end of duration.
+</p>
+<table>
+  <thead><tr><th>Email</th><th>Shop</th><th>Amount</th><th>Accumulated Profit</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+  <tbody id="shopInvestTable"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+</table>
+<button class="btn-nav" onclick="window.location.href='/admin-shop-investments.html'"><span>View All Shop Investments</span><span>→</span></button>
+
+</body>
+</html>

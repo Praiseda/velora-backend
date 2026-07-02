@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Velora Login</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .box {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 10px;
+      width: 320px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #22c55e;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+
+    #msg {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>Login</h2>
+
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+
+  <button onclick="login()">Login</button>
+
+  <p id="msg"></p>
+</div>
+
+<script>
+async function login() {
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("msg");
+
+  try {
+
+    const res = await fetch("http://localhost:5000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.style.color = "red";
+      msg.innerText = data.message;
+      return;
+    }
+
+    localStorage.setItem("token", data.token);
+
+    const payload = JSON.parse(
+      atob(data.token.split(".")[1])
+    );
+
+    msg.style.color = "lightgreen";
+    msg.innerText = "Login successful ✔";
+
+    setTimeout(() => {
+
+      if (payload.isAdmin === true) {
+        window.location.href = "/admin.html";
+      } else {
+        window.location.href = "/dashboard.html";
+      }
+
+    }, 800);
+
+  } catch (err) {
+    msg.style.color = "red";
+    msg.innerText = "Server error";
+  }
+}
+</script>
+
+</body>
+</html>

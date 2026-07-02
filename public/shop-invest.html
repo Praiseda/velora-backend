@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invest in Shop – Velora</title>
+<style>
+body{ margin:0; font-family:Arial; background:#0f172a; color:white; }
+.header{ background:#1e293b; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:15px; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.container{ padding:20px; max-width:520px; margin:0 auto; }
+
+.shop-header{
+  background:linear-gradient(135deg, #0f2d45, #0a1e2e);
+  border:1px solid #1e4d6b;
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:20px;
+  text-align:center;
+}
+.shop-header .icon{ font-size:40px; margin-bottom:8px; }
+.shop-header h2{ margin:0 0 4px; font-size:20px; }
+.shop-header p{ margin:0; font-size:13px; color:#94a3b8; }
+
+.stats-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.stat-box{ background:#1e293b; border-radius:10px; padding:12px; text-align:center; }
+.stat-box .label{ font-size:11px; color:#64748b; margin-bottom:4px; }
+.stat-box .value{ font-size:15px; font-weight:bold; color:#e2e8f0; }
+.stat-box .value.green{ color:#4ade80; }
+.stat-box .value.yellow{ color:#fbbf24; }
+
+.card{ background:#1e293b; border-radius:12px; padding:20px; margin-bottom:16px; }
+.card h3{ margin:0 0 14px; font-size:15px; border-bottom:1px solid #2d4d66; padding-bottom:10px; }
+
+label{ display:block; font-size:12px; color:#94a3b8; margin-bottom:5px; margin-top:12px; }
+
+input{
+  width:100%; padding:11px; border:1px solid #334155;
+  border-radius:7px; background:#0f172a; color:white;
+  font-size:14px; box-sizing:border-box;
+}
+input:focus{ outline:none; border-color:#22c55e; }
+
+textarea{
+  width:100%; padding:11px; border:1px solid #334155;
+  border-radius:7px; background:#0f172a; color:white;
+  font-size:14px; box-sizing:border-box; resize:vertical; min-height:70px;
+}
+textarea:focus{ outline:none; border-color:#22c55e; }
+
+.calc-result{
+  background:#0a1e2e;
+  border:1px solid #1e4d6b;
+  border-radius:10px;
+  padding:14px;
+  margin-top:14px;
+  display:none;
+}
+.calc-row{ display:flex; justify-content:space-between; font-size:13px; padding:4px 0; }
+.calc-row .lbl{ color:#64748b; }
+.calc-row .val{ font-weight:bold; }
+.calc-row .val.green{ color:#4ade80; }
+.calc-row .val.total{ color:#fbbf24; font-size:15px; }
+.calc-divider{ border:none; border-top:1px solid #1e3a52; margin:8px 0; }
+
+.btn-primary{
+  width:100%; padding:13px; background:#22c55e;
+  border:none; color:white; cursor:pointer;
+  border-radius:8px; font-size:15px; font-weight:bold; margin-top:14px;
+}
+.btn-primary:hover{ background:#16a34a; }
+.btn-primary:disabled{ background:#334155; color:#94a3b8; cursor:not-allowed; }
+
+.msg{ font-size:13px; text-align:center; margin-top:10px; min-height:16px; }
+
+.my-inv-section{ margin-top:10px; }
+.inv-card{
+  background:#0a1e2e;
+  border:1px solid #1e3a52;
+  border-radius:10px;
+  padding:14px;
+  margin-bottom:10px;
+}
+.inv-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px; }
+.inv-amount{ font-size:18px; font-weight:bold; color:#e2e8f0; }
+.inv-status{ font-size:12px; font-weight:bold; padding:4px 10px; border-radius:20px; }
+.inv-status.active{ background:#052e16; color:#4ade80; }
+.inv-status.ended{ background:#1c0a0a; color:#f87171; }
+.inv-dates{ font-size:11px; color:#475569; margin-bottom:8px; }
+.profit-row{ display:flex; justify-content:space-between; align-items:center; }
+.profit-label{ font-size:12px; color:#64748b; }
+.profit-amount{ font-size:16px; font-weight:bold; color:#4ade80; }
+.progress{ width:100%; height:8px; background:#1e3a52; border-radius:20px; overflow:hidden; margin-top:8px; }
+.progress-bar{ height:100%; background:#22c55e; border-radius:20px; transition:width 0.4s; }
+.progress-label-row{ display:flex; justify-content:space-between; font-size:11px; color:#475569; margin-top:4px; }
+
+.empty{ text-align:center; padding:20px; color:#64748b; font-size:13px; }
+.min-note{ font-size:12px; color:#f59e0b; margin-top:6px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/shops.html'">← Back</button>
+  <h2 id="pageTitle">Shop Investment</h2>
+  <div></div>
+</div>
+
+<div class="container">
+
+  <!-- SHOP HEADER -->
+  <div class="shop-header">
+    <div class="icon" id="shopIcon">🏪</div>
+    <h2 id="shopName">Loading...</h2>
+    <p id="shopType"></p>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="label">Duration</div>
+      <div class="value" id="statDuration">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Daily Profit</div>
+      <div class="value green" id="statRate">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Min. Invest</div>
+      <div class="value yellow" id="statMin">—</div>
+    </div>
+  </div>
+
+  <!-- PROFIT CALCULATOR -->
+  <div class="card">
+    <h3>📊 Profit Calculator</h3>
+    <label>Enter amount to invest (₦)</label>
+    <input type="number" id="calcAmount" placeholder="e.g. 50000" oninput="calculateProfit()">
+    <p class="min-note" id="minNote"></p>
+    <div class="calc-result" id="calcResult">
+      <div class="calc-row"><span class="lbl">Investment Amount</span><span class="val" id="rAmount">—</span></div>
+      <div class="calc-row"><span class="lbl">Daily Profit (rate)</span><span class="val green" id="rDaily">—</span></div>
+      <div class="calc-row"><span class="lbl">Duration</span><span class="val" id="rDuration">—</span></div>
+      <hr class="calc-divider">
+      <div class="calc-row"><span class="lbl">Total Profit at End</span><span class="val green" id="rProfit">—</span></div>
+      <div class="calc-row"><span class="lbl">Total Payout (Capital + Profit)</span><span class="val total" id="rTotal">—</span></div>
+    </div>
+  </div>
+
+  <!-- SUBMIT DEPOSIT REQUEST -->
+  <div class="card">
+    <h3>📤 Invest Now</h3>
+    <!-- Shop full notice -->
+    <div id="shopFullNotice" style="display:none; background:#1c0a0a; border:1px solid #dc2626; border-radius:8px; padding:12px 14px; margin-bottom:12px; font-size:13px; color:#f87171; text-align:center;">
+      🚫 This shop is fully filled and no longer accepting investments.
+    </div>
+
+    <div id="depositBalBox" style="background:#0f2d45; border:1px solid #1e4d6b; border-radius:8px; padding:10px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; color:#94a3b8;">Deposit Wallet Balance</span>
+      <span id="shopDepositBal" style="font-size:16px; font-weight:bold; color:#7dd3fc;">Loading...</span>
+    </div>
+    <p style="font-size:13px; color:#94a3b8; margin:0 0 4px;">
+      Investment is deducted from your <strong style="color:#7dd3fc;">deposit wallet</strong>. Fund your deposit wallet from the dashboard if needed.
+    </p>
+    <label>Investment Amount (₦)</label>
+    <input type="number" id="reqAmount" placeholder="Minimum ₦{{min}}" oninput="syncCalc()">
+
+    <button class="btn-primary" id="submitBtn" onclick="submitRequest()">Invest Now</button>
+    <p class="msg" id="reqMsg"></p>
+  </div>
+
+  <!-- MY INVESTMENTS IN THIS SHOP -->
+  <div class="card">
+    <h3>💼 My Investments in This Shop</h3>
+    <div class="my-inv-section" id="myInvestments">
+      <p style="color:#94a3b8; font-size:13px; text-align:center;">Loading...</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+
+const SHOPS = [
+  { id:1, icon:"🖊",  name:"Shop 1", type:"Stationery Investment",        duration:60,  rate:0.05, displayRate:"5%",  min:5000   },
+  { id:2, icon:"📱",  name:"Shop 2", type:"Electronics Investment",        duration:120, rate:0.10, displayRate:"10%", min:20000  },
+  { id:3, icon:"👗",  name:"Shop 3", type:"Fashion & Clothing Investment", duration:210, rate:0.15, displayRate:"15%", min:50000  },
+  { id:4, icon:"🛒",  name:"Shop 4", type:"Supermarket Investment",        duration:270, rate:0.20, displayRate:"20%", min:100000 },
+  { id:5, icon:"🏭",  name:"Shop 5", type:"Wholesale Business Investment", duration:365, rate:0.25, displayRate:"25%", min:200000 },
+];
+
+const params = new URLSearchParams(window.location.search);
+const shopId = parseInt(params.get("shop")) || 1;
+const shop   = SHOPS.find(s=>s.id===shopId) || SHOPS[0];
+
+// Populate shop info
+document.getElementById("pageTitle").innerText  = shop.name;
+document.getElementById("shopIcon").innerText   = shop.icon;
+document.getElementById("shopName").innerText   = `${shop.name} – ${shop.type}`;
+document.getElementById("shopType").innerText   = shop.type;
+document.getElementById("statDuration").innerText = `${shop.duration} days`;
+document.getElementById("statRate").innerText = `${shop.displayRate} daily`;
+document.getElementById("statMin").innerText      = `₦${shop.min.toLocaleString()}`;
+document.getElementById("minNote").innerText      = `Minimum investment: ₦${shop.min.toLocaleString()}`;
+document.getElementById("reqAmount").placeholder  = `Minimum ₦${shop.min.toLocaleString()}`;
+
+// ── PROFIT CALCULATOR ──────────────────────────────────────
+function calculateProfit(){
+  const amount = parseFloat(document.getElementById("calcAmount").value);
+  const result = document.getElementById("calcResult");
+  if(!amount || amount <= 0){ result.style.display="none"; return; }
+  const dailyProfit = amount * shop.rate;
+  const totalProfit = dailyProfit * shop.duration;
+  const totalPayout = amount + totalProfit;
+  document.getElementById("rAmount").innerText   = "₦" + amount.toLocaleString();
+  document.getElementById("rDaily").innerText    = "₦" + dailyProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById("rDuration").innerText = `${shop.duration} days`;
+  document.getElementById("rProfit").innerText   = "₦" + totalProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById("rTotal").innerText    = "₦" + totalPayout.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  result.style.display = "block";
+}
+
+function syncCalc(){
+  const amount = document.getElementById("reqAmount").value;
+  document.getElementById("calcAmount").value = amount;
+  calculateProfit();
+}
+
+// ── SUBMIT REQUEST (AUTO-APPROVED) ────────────────────────
+async function submitRequest(){
+  const amount = parseFloat(document.getElementById("reqAmount").value);
+  const msg    = document.getElementById("reqMsg");
+  const btn    = document.getElementById("submitBtn");
+
+  msg.innerText = "";
+
+  if(!amount || amount < shop.min){
+    msg.style.color = "#ef4444";
+    msg.innerText   = `Minimum investment for this shop is ₦${shop.min.toLocaleString()}`;
+    return;
+  }
+
+  if(!confirm(`Invest ₦${amount.toLocaleString()} in ${shop.name}?
+
+This will be deducted from your deposit wallet immediately and your investment will start today.`)) return;
+
+  btn.disabled  = true;
+  btn.innerText = "Processing...";
+
+  try {
+    const res  = await fetch("/api/shop-invest/request", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Authorization:"Bearer "+token },
+      body: JSON.stringify({ shopId: shop.id, amount })
+    });
+    const data = await res.json();
+    if(res.ok){
+      msg.style.color = "#4ade80";
+      msg.innerText   = data.message;
+      document.getElementById("reqAmount").value          = "";
+      document.getElementById("calcResult").style.display = "none";
+      document.getElementById("calcAmount").value         = "";
+      loadMyInvestments();
+      loadDepositBalance();
+      checkShopFull();
+    } else {
+      msg.style.color = "#ef4444";
+      msg.innerText   = data.message || "Investment failed";
+      if(data.message && data.message.includes("fully filled")){
+        document.getElementById("shopFullNotice").style.display = "block";
+        btn.disabled  = true;
+        btn.innerText = "Shop Full";
+        return;
+      }
+    }
+  } catch(err){
+    msg.style.color = "#ef4444";
+    msg.innerText   = "Server error. Please try again.";
+  } finally {
+    if(btn.innerText !== "Shop Full"){
+      btn.disabled  = false;
+      btn.innerText = "Invest Now";
+    }
+  }
+}
+
+// ── DEPOSIT BALANCE ───────────────────────────────────────
+async function loadDepositBalance(){
+  try {
+    const res  = await fetch("/api/user/deposit-balance", { headers:{ Authorization:"Bearer "+token } });
+    const data = await res.json();
+    document.getElementById("shopDepositBal").innerText = "₦" + Number(data.depositBalance||0).toLocaleString();
+  } catch(err){ console.error(err); }
+}
+
+// ── CHECK IF SHOP IS FULL ──────────────────────────────────
+async function checkShopFull(){
+  try {
+    const res   = await fetch("/api/shop-fills", { headers:{ Authorization:"Bearer "+token } });
+    const fills = await res.json();
+    const fill  = fills[shop.id];
+    if(fill && fill.percent >= 100){
+      document.getElementById("shopFullNotice").style.display = "block";
+      const btn = document.getElementById("submitBtn");
+      btn.disabled  = true;
+      btn.innerText = "Shop Full";
+    }
+  } catch(err){ /* silent */ }
+}
+
+// ── MY INVESTMENTS IN THIS SHOP ────────────────────────────
+async function loadMyInvestments(){
+  try {
+    const res  = await fetch(`/api/shop-invest/my?shopId=${shop.id}`, {
+      headers:{ Authorization:"Bearer "+token }
+    });
+    if(res.status===401){ localStorage.removeItem("token"); window.location.href="/login.html"; return; }
+    const data = await res.json();
+    const el   = document.getElementById("myInvestments");
+
+    if(!data.length){
+      el.innerHTML = `<div class="empty">No investments in this shop yet.</div>`;
+      return;
+    }
+
+    el.innerHTML = data.map(inv => {
+      const isActive   = inv.active===1||inv.active===true;
+      const start      = new Date(inv.startDate);
+      const endDate    = new Date(start.getTime() + shop.duration*24*60*60*1000);
+      const now        = new Date();
+      const daysElapsed = Math.min(Math.floor((now - start)/(1000*60*60*24)), shop.duration);
+      const daysLeft   = Math.max(shop.duration - daysElapsed, 0);
+      const progress   = Math.min((daysElapsed/shop.duration)*100, 100);
+      const accumulated = inv.amount * shop.rate * daysElapsed;
+      const totalProfit = inv.amount * shop.rate * shop.duration;
+
+      return `
+        <div class="inv-card">
+          <div class="inv-top">
+            <div>
+              <div class="inv-amount">₦${Number(inv.amount).toLocaleString()}</div>
+              <div class="inv-dates">Started: ${start.toDateString()} · Ends: ${endDate.toDateString()}</div>
+            </div>
+            <div class="inv-status ${isActive?'active':'ended'}">${isActive?'✔ ACTIVE':'ENDED'}</div>
+          </div>
+          <div class="profit-row">
+            <span class="profit-label">Accumulated Profit so far</span>
+            <span class="profit-amount">₦${accumulated.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
+          <div class="profit-row" style="margin-top:4px;">
+            <span class="profit-label">Total profit at end</span>
+            <span style="font-size:13px; color:#fbbf24; font-weight:bold;">₦${totalProfit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+          </div>
+          <div class="progress" style="margin-top:10px;"><div class="progress-bar" style="width:${progress}%"></div></div>
+          <div class="progress-label-row">
+            <span>${daysElapsed} days elapsed</span>
+            <span>${isActive ? daysLeft+' days left' : 'Completed'}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch(err){
+    document.getElementById("myInvestments").innerHTML =
+      `<div class="empty" style="color:#ef4444;">Failed to load investments.</div>`;
+  }
+}
+
+loadMyInvestments();
+</script>
+</body>
+</html>

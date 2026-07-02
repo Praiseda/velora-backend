@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Referral History – Velora</title>
+<style>
+body{ margin:0; font-family:Arial; background:#0f172a; color:white; }
+.header{ background:#1e293b; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.container{ padding:20px; max-width:600px; margin:0 auto; }
+.summary{ background:#1e293b; border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
+.summary h3{ margin:0; font-size:13px; color:#94a3b8; }
+.summary .amount{ font-size:28px; font-weight:bold; color:#22c55e; }
+.card{ background:#1e293b; border-radius:10px; padding:14px 16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.card-left{ flex:1; }
+.ref-name{ font-size:14px; font-weight:bold; margin-bottom:3px; }
+.ref-email{ font-size:12px; color:#94a3b8; }
+.ref-date{ font-size:11px; color:#475569; margin-top:3px; }
+.bonus{ font-size:15px; font-weight:bold; color:#22c55e; white-space:nowrap; }
+.empty{ text-align:center; padding:40px; color:#94a3b8; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.section-title{ font-size:13px; color:#94a3b8; margin:20px 0 10px; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/dashboard.html'">← Back</button>
+  <h2>🔗 Referral History</h2>
+  <div></div>
+</div>
+<div class="container">
+  <div class="summary">
+    <div>
+      <h3>Total Referral Earnings</h3>
+      <div class="amount" id="totalEarnings">₦0</div>
+    </div>
+    <div style="text-align:right;">
+      <h3>Total Referrals</h3>
+      <div class="amount" id="totalCount" style="color:#7dd3fc;">0</div>
+    </div>
+  </div>
+
+  <div class="section-title">People You Referred</div>
+  <div id="referralsList">
+    <p style="color:#94a3b8; text-align:center; padding:20px;">Loading...</p>
+  </div>
+
+  <div class="section-title">Referral Bonus Transactions</div>
+  <div id="bonusList">
+    <p style="color:#94a3b8; text-align:center; padding:20px;">Loading...</p>
+  </div>
+</div>
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+
+async function loadReferralHistory(){
+  try {
+    // Load referrals
+    const refRes  = await fetch("/api/user/referrals", { headers:{ Authorization:"Bearer "+token } });
+    if(refRes.status===401){ localStorage.removeItem("token"); window.location.href="/login.html"; return; }
+    const refData = await refRes.json();
+
+    document.getElementById("totalEarnings").innerText = "₦" + (refData.totalEarnings||0).toLocaleString();
+    document.getElementById("totalCount").innerText    = (refData.referrals||[]).length;
+
+    const refList = document.getElementById("referralsList");
+    if(!refData.referrals||!refData.referrals.length){
+      refList.innerHTML = `<div class="empty">No referrals yet.<br><span style="font-size:12px;">Share your referral link to start earning.</span></div>`;
+    } else {
+      refList.innerHTML = refData.referrals.map(r=>`
+        <div class="card">
+          <div class="card-left">
+            <div class="ref-name">${r.fullName}</div>
+            <div class="ref-email">${r.email}</div>
+            <div class="ref-date">${Number(r.bonusEarned) > 0 ? "Plan activated ✔" : "No plan activated yet"}</div>
+          </div>
+          <div class="bonus" style="${Number(r.bonusEarned) > 0 ? '' : 'color:#64748b;'}">
+            ${Number(r.bonusEarned) > 0 ? "+₦" + Number(r.bonusEarned).toLocaleString() : "₦0"}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Load bonus transactions
+    const txRes  = await fetch("/api/wallet/history", { headers:{ Authorization:"Bearer "+token } });
+    const txRaw  = await txRes.json();
+    const txData = Array.isArray(txRaw) ? txRaw : (txRaw.transactions||[]);
+    const bonuses = txData.filter(t=>t.type==="REFERRAL_BONUS");
+
+    const bonusList = document.getElementById("bonusList");
+    if(!bonuses.length){
+      bonusList.innerHTML = `<div class="empty">No bonus transactions yet.</div>`;
+    } else {
+      bonusList.innerHTML = bonuses.map(t=>{
+        const date = new Date(t.createdAt).toLocaleString();
+        return `
+          <div class="card">
+            <div class="card-left">
+              <div class="ref-name">Referral Bonus</div>
+              <div class="ref-email">${t.reference||"—"}</div>
+              <div class="ref-date">${date}</div>
+            </div>
+            <div class="bonus">+₦${Number(t.amount).toLocaleString()}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+  } catch(err){
+    document.getElementById("referralsList").innerHTML = `<div class="empty" style="color:#ef4444;">Failed to load referral data.</div>`;
+    console.error(err);
+  }
+}
+
+loadReferralHistory();
+</script>
+</body>
+</html>

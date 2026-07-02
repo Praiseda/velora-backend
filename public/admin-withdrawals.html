@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Withdrawals – Velora Admin</title>
+<style>
+body{ margin:0; font-family:Arial; background:#081421; color:white; }
+.header{ background:#0d2035; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.container{ padding:20px; }
+.filters{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+.filters input{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; width:220px; }
+.filters input:focus{ outline:none; border-color:#22c55e; }
+.filters select{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; }
+.filters button{ background:#1e4d6b; color:#7dd3fc; border:1px solid #2d6a8f; padding:8px 14px; border-radius:7px; font-size:13px; cursor:pointer; }
+table{ width:100%; border-collapse:collapse; }
+th,td{ border:1px solid #2d4d66; padding:10px; font-size:13px; }
+th{ background:#0d2035; }
+button{ padding:6px 10px; border:none; cursor:pointer; border-radius:5px; margin:2px; font-size:12px; color:white; }
+.btn-approve{ background:#16a34a; } .btn-reject{ background:#dc2626; }
+.empty{ color:#94a3b8; padding:10px; text-align:center; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.count{ font-size:13px; color:#94a3b8; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/admin.html'">← Back</button>
+  <h2>💸 All Withdrawal Requests</h2>
+  <div></div>
+</div>
+<div class="container">
+  <div class="filters">
+    <input type="text" id="searchEmail" placeholder="Filter by email..." oninput="filterRows()">
+    <select id="filterStatus" onchange="filterRows()">
+      <option value="">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="approved">Approved</option>
+      <option value="rejected">Rejected</option>
+    </select>
+    <button onclick="filterRows()">Filter</button>
+    <button onclick="clearFilters()">Clear</button>
+  </div>
+  <div class="count" id="countLabel">Loading...</div>
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Gross Amount</th><th>Fee (8%)</th><th>Net Payout</th><th>Bank</th><th>Account Name</th><th>Account No.</th><th>Date</th><th>Status</th><th>Approve / Reject</th></tr>
+    </thead>
+    <tbody id="withdrawTable"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+  </table>
+</div>
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+let allRows = [];
+
+async function loadWithdrawals(){
+  try {
+    const res  = await fetch("/api/admin/withdrawals", { headers:{ Authorization:"Bearer "+token } });
+    if(res.status===401||res.status===403){ window.location.href="/login.html"; return; }
+    allRows = await res.json();
+    renderRows(allRows);
+  } catch(err){ console.error(err); }
+}
+
+function renderRows(data){
+  const table = document.getElementById("withdrawTable");
+  document.getElementById("countLabel").innerText = `${data.length} record${data.length!==1?"s":""}`;
+  if(!data.length){ table.innerHTML=`<tr><td colspan="10" class="empty">No withdrawals found.</td></tr>`; return; }
+  table.innerHTML = data.map(w=>{
+    const fee       = Number(w.fee || (w.amount * 0.08)).toFixed(2);
+    const netAmount = (Number(w.amount) - Number(fee)).toFixed(2);
+
+    const date = w.createdAt ? new Date(w.createdAt).toLocaleString() : "—";
+    return `<tr>
+      <td>${w.email}</td>
+      <td>₦${Number(w.amount).toLocaleString()}</td>
+      <td style="color:#f87171;">₦${Number(fee).toLocaleString()}</td>
+      <td style="color:#4ade80; font-weight:600;">₦${Number(netAmount).toLocaleString()}</td>
+      <td>${w.bankName||'<span style="color:#ef4444;">Not set</span>'}</td>
+      <td>${w.accountName||'<span style="color:#ef4444;">Not set</span>'}</td>
+      <td>${w.accountNumber||'<span style="color:#ef4444;">Not set</span>'}</td>
+      <td style="font-size:11px;">${date}</td>
+      <td>${w.status}</td>
+      <td>${w.status==="pending"?`
+        <button class="btn-approve" onclick="approve(${w.id})">Approve</button>
+        <button class="btn-reject" onclick="reject('${w.email}',${w.amount},${w.id})">Reject</button>
+      `:"—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+function filterRows(){
+  const email  = document.getElementById("searchEmail").value.trim().toLowerCase();
+  const status = document.getElementById("filterStatus").value;
+  renderRows(allRows.filter(w=>
+    (!email  || w.email.toLowerCase().includes(email)) &&
+    (!status || w.status === status)
+  ));
+}
+function clearFilters(){
+  document.getElementById("searchEmail").value="";
+  document.getElementById("filterStatus").value="";
+  renderRows(allRows);
+}
+
+async function approve(id){
+  if(!confirm("Approve this withdrawal?")) return;
+  await fetch("/api/admin/withdraw/approve",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+  loadWithdrawals();
+}
+async function reject(email,amount,id){
+  if(!confirm(`Reject and refund ₦${Number(amount).toLocaleString()} to ${email}?`)) return;
+  await fetch("/api/admin/withdraw/reject",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id,email,amount})});
+  loadWithdrawals();
+}
+loadWithdrawals();
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>My Investments</title>
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.header{
+  background:#1e293b;
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.container{
+  padding:20px;
+}
+
+.card{
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:15px;
+}
+
+.status{
+  display:inline-block;
+  padding:5px 12px;
+  border-radius:5px;
+  font-size:12px;
+  font-weight:bold;
+}
+
+.active{
+  background:#166534;
+  color:#4ade80;
+}
+
+.inactive{
+  background:#7f1d1d;
+  color:#fca5a5;
+}
+
+.small{
+  font-size:12px;
+  color:#94a3b8;
+  margin:4px 0;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.profit-badge{
+  background:#0f172a;
+  padding:8px 14px;
+  border-radius:8px;
+  font-size:13px;
+  color:#22c55e;
+  font-weight:bold;
+}
+
+.empty{
+  text-align:center;
+  padding:40px 20px;
+  color:#94a3b8;
+}
+
+a{
+  color:#22c55e;
+  text-decoration:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div>📊 My Investments</div>
+  <div onclick="goBack()" style="cursor:pointer;">← Back</div>
+</div>
+
+<div class="container" id="list">
+  <p style="color:#94a3b8;">Loading investments...</p>
+</div>
+
+<script>
+
+const token = localStorage.getItem("token");
+
+if(!token){
+  window.location.href="/login.html";
+}
+
+function goBack(){
+  window.location.href="/dashboard.html";
+}
+
+async function loadInvestments(){
+  try {
+    const res  = await fetch("/api/invest/my", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+
+    if(res.status === 401){
+      localStorage.removeItem("token");
+      window.location.href="/login.html";
+      return;
+    }
+
+    const data = await res.json();
+    const list = document.getElementById("list");
+
+    if(!data.length){
+      list.innerHTML = `
+        <div class="empty">
+          <p>📭 No investments yet.</p>
+          <a href="/invest.html">Browse plans →</a>
+        </div>
+      `;
+      return;
+    }
+
+    let html = "";
+
+    data.forEach(inv => {
+      const isActive    = inv.active === true || inv.active === 1;
+      const statusClass = isActive ? "active" : "inactive";
+      const statusText  = isActive ? "✔ ACTIVE" : "ENDED";
+      const startDate   = new Date(inv.startDate).toDateString();
+
+      html += `
+        <div class="card">
+          <div class="row">
+            <div>
+              <h3 style="margin:0 0 6px;">${inv.planName}</h3>
+              <p class="small">Started: ${startDate}</p>
+              <p class="small">Duration: <strong style="color:#22c55e;">Ongoing</strong></p>
+            </div>
+            <div style="text-align:right;">
+              <div class="profit-badge">₦${inv.dailyProfit.toLocaleString()} / day</div>
+              <div style="margin-top:8px;">
+                <span class="status ${statusClass}">${statusText}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    list.innerHTML = html;
+
+  } catch(err) {
+    document.getElementById("list").innerHTML =
+      "<p style='color:#ef4444;'>Failed to load investments.</p>";
+  }
+}
+
+loadInvestments();
+
+</script>
+
+</body>
+</html>

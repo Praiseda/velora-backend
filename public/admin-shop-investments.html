@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shop Investments – Velora Admin</title>
+<style>
+body{ margin:0; font-family:Arial; background:#081421; color:white; }
+.header{ background:#0d2035; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.container{ padding:20px; }
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.stat-box{ background:#102437; border-radius:10px; padding:14px; }
+.stat-box .lbl{ font-size:12px; color:#64748b; margin-bottom:4px; }
+.stat-box .val{ font-size:20px; font-weight:bold; color:#22c55e; }
+.filters{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+.filters input{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; width:220px; }
+.filters input:focus{ outline:none; border-color:#22c55e; }
+.filters select{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; }
+.filters button{ background:#1e4d6b; color:#7dd3fc; border:1px solid #2d6a8f; padding:8px 14px; border-radius:7px; font-size:13px; cursor:pointer; }
+table{ width:100%; border-collapse:collapse; }
+th,td{ border:1px solid #2d4d66; padding:10px; font-size:13px; }
+th{ background:#0d2035; }
+button{ padding:6px 10px; border:none; cursor:pointer; border-radius:5px; margin:2px; font-size:12px; color:white; }
+.btn-approve{ background:#16a34a; } .btn-reject{ background:#dc2626; }
+.empty{ color:#94a3b8; padding:10px; text-align:center; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.count{ font-size:13px; color:#94a3b8; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/admin.html'">← Back</button>
+  <h2>🏪 All Shop Investments</h2>
+  <button onclick="load()" style="background:#1e4d6b;color:white;border:none;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:13px;">🔄 Refresh</button>
+</div>
+<div class="container">
+  <div class="stats-row">
+    <div class="stat-box"><div class="lbl">Active Amount</div><div class="val" id="sActive">₦—</div></div>
+    <div class="stat-box"><div class="lbl">Pending Amount</div><div class="val" style="color:#fbbf24;" id="sPending">₦—</div></div>
+    <div class="stat-box"><div class="lbl">Active Count</div><div class="val" style="color:#7dd3fc;" id="sActiveCount">—</div></div>
+    <div class="stat-box"><div class="lbl">Paid Out Total</div><div class="val" style="color:#a78bfa;" id="sPaidOut">₦—</div></div>
+  </div>
+  <div class="filters">
+    <input type="text" id="searchEmail" placeholder="Filter by email..." oninput="filterRows()">
+    <select id="filterShop" onchange="filterRows()">
+      <option value="">All Shops</option>
+      <option value="1">Shop 1 – Stationery</option>
+      <option value="2">Shop 2 – Electronics</option>
+      <option value="3">Shop 3 – Fashion</option>
+      <option value="4">Shop 4 – Supermarket</option>
+      <option value="5">Shop 5 – Wholesale</option>
+    </select>
+    <select id="filterStatus" onchange="filterRows()">
+      <option value="">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="active">Active</option>
+      <option value="paid_out">Paid Out</option>
+      <option value="rejected">Rejected</option>
+    </select>
+    <button onclick="filterRows()">Filter</button>
+    <button onclick="clearFilters()">Clear</button>
+  </div>
+  <div class="count" id="countLabel">Loading...</div>
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Shop</th><th>Amount</th><th>Accumulated Profit</th><th>Start Date</th><th>End Date</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody id="investTable"><tr><td colspan="8" class="empty">Loading...</td></tr></tbody>
+  </table>
+</div>
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+
+const SHOPS    = {1:"Shop 1 – Stationery",2:"Shop 2 – Electronics",3:"Shop 3 – Fashion",4:"Shop 4 – Supermarket",5:"Shop 5 – Wholesale"};
+const DURATIONS = {1:60,2:120,3:210,4:270,5:365};
+const RATES     = {1:0.05,2:0.10,3:0.15,4:0.20,5:0.25};
+let allRows = [];
+
+async function load(){
+  try {
+    const [statsRes, dataRes] = await Promise.all([
+      fetch("/api/admin/shop-invest/stats", { headers:{Authorization:"Bearer "+token} }),
+      fetch("/api/admin/shop-investments",  { headers:{Authorization:"Bearer "+token} })
+    ]);
+    if(statsRes.status===401||statsRes.status===403){ window.location.href="/login.html"; return; }
+    const stats = await statsRes.json();
+    allRows     = await dataRes.json();
+
+    document.getElementById("sActive").innerText     = "₦" + Number(stats.activeAmount||0).toLocaleString();
+    document.getElementById("sPending").innerText    = "₦" + Number(stats.pendingAmount||0).toLocaleString();
+    document.getElementById("sActiveCount").innerText = stats.activeCount||0;
+    document.getElementById("sPaidOut").innerText    = "₦" + Number(stats.paidOutAmount||0).toLocaleString();
+
+    filterRows();
+  } catch(err){ console.error(err); }
+}
+
+function filterRows(){
+  const email  = document.getElementById("searchEmail").value.trim().toLowerCase();
+  const shop   = document.getElementById("filterShop").value;
+  const status = document.getElementById("filterStatus").value;
+  const filtered = allRows.filter(r=>
+    (!email  || r.email.toLowerCase().includes(email)) &&
+    (!shop   || String(r.shopId)===shop) &&
+    (!status || r.status===status)
+  );
+  renderRows(filtered);
+}
+
+function clearFilters(){
+  document.getElementById("searchEmail").value="";
+  document.getElementById("filterShop").value="";
+  document.getElementById("filterStatus").value="";
+  renderRows(allRows);
+}
+
+function renderRows(data){
+  const table = document.getElementById("investTable");
+  document.getElementById("countLabel").innerText = `${data.length} record${data.length!==1?"s":""}`;
+  if(!data.length){ table.innerHTML=`<tr><td colspan="8" class="empty">No records found.</td></tr>`; return; }
+
+  table.innerHTML = data.map(inv => {
+    const sColor = inv.status==="active"?"#4ade80":inv.status==="paid_out"?"#a78bfa":inv.status==="rejected"?"#ef4444":"#fbbf24";
+    let accum = "—", endDateStr = "—";
+    if(inv.status==="active" && inv.startDate){
+      const dur   = DURATIONS[inv.shopId]||60;
+      const rate  = RATES[inv.shopId]||0.05;
+      const start = new Date(inv.startDate);
+      const end   = new Date(start.getTime()+dur*24*60*60*1000);
+      const days  = Math.min(Math.floor((new Date()-start)/(1000*60*60*24)), dur);
+      accum       = "₦" + (Number(inv.amount)*rate*days).toLocaleString(undefined,{maximumFractionDigits:2});
+      endDateStr  = end.toDateString();
+    }
+    const startStr = inv.startDate ? new Date(inv.startDate).toDateString() : "—";
+    return `<tr>
+      <td>${inv.email}</td>
+      <td>${SHOPS[inv.shopId]||"Shop "+inv.shopId}</td>
+      <td>₦${Number(inv.amount).toLocaleString()}</td>
+      <td style="color:#4ade80;">${accum}</td>
+      <td style="font-size:11px;">${startStr}</td>
+      <td style="font-size:11px;">${endDateStr}</td>
+      <td style="color:${sColor};font-weight:bold;">${inv.status.toUpperCase()}</td>
+      <td>${inv.status==="pending"?`
+        <button class="btn-approve" onclick="confirm_inv(${inv.id})">Confirm</button>
+        <button class="btn-reject"  onclick="reject_inv(${inv.id})">Reject</button>
+      `:"—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function confirm_inv(id){
+  if(!confirm("Confirm this shop investment? Profit accumulation starts immediately.")) return;
+  const res  = await fetch("/api/admin/shop-invest/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+  const data = await res.json(); alert(data.message); load();
+}
+async function reject_inv(id){
+  if(!confirm("Reject this investment request?")) return;
+  const res  = await fetch("/api/admin/shop-invest/reject",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+  const data = await res.json(); alert(data.message); load();
+}
+
+load();
+</script>
+</body>
+</html>

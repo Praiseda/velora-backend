@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Transactions</title>
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.header{
+  background:#1e293b;
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.container{ padding:20px; }
+
+.card{
+  background:#1e293b;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+
+.card-left{ flex:1; }
+
+.tx-type{ font-weight:bold; font-size:14px; margin-bottom:3px; }
+.tx-ref{ font-size:12px; color:#94a3b8; }
+.tx-date{ font-size:11px; color:#475569; margin-top:3px; }
+
+.tx-amount{ font-size:16px; font-weight:bold; white-space:nowrap; }
+
+.credit{ color:#22c55e; }
+.debit { color:#ef4444; }
+
+.empty{
+  text-align:center;
+  padding:40px;
+  color:#94a3b8;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <div onclick="back()" style="cursor:pointer; color:#7dd3fc;">← Back</div>
+  <div>📜 Transaction History</div>
+  <div></div>
+</div>
+
+<div class="container" id="list">
+  <p style="color:#94a3b8; text-align:center; padding:30px;">Loading transactions...</p>
+</div>
+
+<script>
+
+const token = localStorage.getItem("token");
+
+if(!token){
+  window.location.href="/login.html";
+}
+
+function back(){
+  window.location.href="/dashboard.html";
+}
+
+async function loadTransactions(){
+  try {
+    const res  = await fetch("/api/wallet/history", {
+      headers:{ Authorization:"Bearer "+token }
+    });
+
+    if(res.status === 401){
+      localStorage.removeItem("token");
+      window.location.href="/login.html";
+      return;
+    }
+
+    const data = await res.json();
+    const list = document.getElementById("list");
+
+    if(!Array.isArray(data) || !data.length){
+      list.innerHTML = `<div class="empty">No transactions yet.</div>`;
+      return;
+    }
+
+    const debitTypes = ["WITHDRAW", "INVESTMENT"];
+
+    list.innerHTML = data.map(t => {
+      const isDebit  = debitTypes.includes(t.type);
+      const colorClass = isDebit ? "debit" : "credit";
+      const sign       = isDebit ? "−" : "+";
+      const date       = new Date(t.createdAt).toLocaleString();
+
+      return `
+        <div class="card">
+          <div class="card-left">
+            <div class="tx-type">${t.type.replace(/_/g, " ")}</div>
+            <div class="tx-ref">${t.reference || "—"}</div>
+            <div class="tx-date">${date}</div>
+          </div>
+          <div class="tx-amount ${colorClass}">
+            ${sign}₦${Number(t.amount).toLocaleString()}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch(err) {
+    document.getElementById("list").innerHTML =
+      `<div class="empty" style="color:#ef4444;">Failed to load transactions.</div>`;
+  }
+}
+
+loadTransactions();
+
+</script>
+
+</body>
+</html>

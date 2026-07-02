@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>In-Shop Investments – Velora</title>
+<style>
+body{ margin:0; font-family:Arial; background:#0f172a; color:white; }
+.header{ background:#1e293b; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.container{ padding:20px; max-width:680px; margin:0 auto; }
+
+.wallet-bar{ background:#1e293b; border-radius:12px; padding:14px 18px; margin-bottom:22px; display:flex; justify-content:space-between; align-items:center; }
+.wallet-bar h3{ margin:0; font-size:13px; color:#94a3b8; }
+.wallet-bar .amount{ font-size:24px; font-weight:bold; color:#22c55e; }
+
+.intro{ font-size:13px; color:#94a3b8; margin-bottom:20px; line-height:1.6; }
+
+.shop-card{
+  background:#1e293b;
+  border-radius:14px;
+  padding:18px 20px;
+  margin-bottom:14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:border-color 0.2s, background 0.2s;
+}
+.shop-card:hover{ border-color:#22c55e; background:#162032; }
+
+.shop-icon{ font-size:32px; min-width:44px; text-align:center; }
+.shop-info{ flex:1; }
+.shop-name{ font-size:15px; font-weight:bold; margin-bottom:4px; }
+.shop-type{ font-size:12px; color:#94a3b8; margin-bottom:6px; }
+.shop-meta{ display:flex; gap:14px; flex-wrap:wrap; }
+.meta-item{ font-size:12px; }
+.meta-label{ color:#64748b; }
+.meta-value{ color:#e2e8f0; font-weight:bold; }
+.meta-profit{ color:#4ade80; font-weight:bold; }
+
+.shop-min{ text-align:right; font-size:12px; color:#94a3b8; white-space:nowrap; }
+.shop-min span{ display:block; font-size:18px; font-weight:bold; color:#fbbf24; }
+
+.arrow{ color:#94a3b8; font-size:18px; }
+
+.my-investments-btn{
+  width:100%;
+  padding:13px;
+  background:#0f2d45;
+  color:#7dd3fc;
+  border:1px solid #1e4d6b;
+  border-radius:10px;
+  font-size:14px;
+  cursor:pointer;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+}
+.my-investments-btn:hover{ background:#163a54; }
+
+.ring-wrap{ position:relative; width:54px; height:54px; flex-shrink:0; }
+.ring-wrap svg{ transform:rotate(-90deg); }
+.ring-bg{ fill:none; stroke:#1e3a52; stroke-width:4; }
+.ring-fill{ fill:none; stroke:#22c55e; stroke-width:4; stroke-linecap:round; transition:stroke-dashoffset 0.5s; }
+.ring-pct{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:11px; font-weight:bold; color:#22c55e; white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/dashboard.html'">← Back</button>
+  <h2>🏪 In-Shop Investments</h2>
+  <div></div>
+</div>
+
+<div class="container">
+
+  <div class="wallet-bar">
+    <div>
+      <h3>Wallet Balance</h3>
+      <div class="amount" id="walletBalance">Loading...</div>
+    </div>
+    <button class="my-investments-btn" style="width:auto; padding:9px 16px;" onclick="window.location.href='/my-shop-investments.html'">
+      <span>My Shop Investments</span><span style="margin-left:8px;">→</span>
+    </button>
+  </div>
+
+  <p class="intro">
+    Invest in any of our partner shops and earn daily profit on your investment.
+    Profits accumulate daily and are automatically transferred to your main wallet at the end of the duration.
+  </p>
+
+  <div id="shopList">Loading shops...</div>
+
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+
+const SHOPS = [
+  { id:1, icon:"🖊",  name:"Shop 1", type:"Stationery Investment",        duration:60,  rate:0.05, displayRate:"5%",  min:5000   },
+  { id:2, icon:"📱",  name:"Shop 2", type:"Electronics Investment",        duration:120, rate:0.10, displayRate:"10%", min:20000  },
+  { id:3, icon:"👗",  name:"Shop 3", type:"Fashion & Clothing Investment", duration:210, rate:0.15, displayRate:"15%", min:50000  },
+  { id:4, icon:"🛒",  name:"Shop 4", type:"Supermarket Investment",        duration:270, rate:0.20, displayRate:"20%", min:100000 },
+  { id:5, icon:"🏭",  name:"Shop 5", type:"Wholesale Business Investment", duration:365, rate:0.25, displayRate:"25%", min:200000 },
+];
+
+async function loadProfile(){
+  try {
+    const res  = await fetch("/api/user/profile", { headers:{ Authorization:"Bearer "+token } });
+    if(res.status===401){ localStorage.removeItem("token"); window.location.href="/login.html"; return; }
+    const data = await res.json();
+    document.getElementById("walletBalance").innerText = "₦" + (data.walletBalance||0).toLocaleString();
+  } catch(err){ console.error(err); }
+}
+
+let shopFills = {};
+
+function buildRing(pct){
+  const r = 22, circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  return `
+    <div class="ring-wrap">
+      <svg width="54" height="54" viewBox="0 0 54 54">
+        <circle class="ring-bg" cx="27" cy="27" r="${r}"/>
+        <circle class="ring-fill" cx="27" cy="27" r="${r}"
+          stroke-dasharray="${circ.toFixed(2)}"
+          stroke-dashoffset="${offset.toFixed(2)}"/>
+      </svg>
+      <div class="ring-pct">${pct}%</div>
+    </div>`;
+}
+
+function renderShops(){
+  const container = document.getElementById("shopList");
+  container.innerHTML = SHOPS.map(shop => {
+    const dailyPct    = shop.displayRate;
+    const totalReturn = (shop.min * shop.rate * shop.duration).toFixed(0);
+    const fill        = shopFills[shop.id];
+    const pct         = fill ? fill.percent : 0;
+    return `
+      <div class="shop-card" onclick="window.location.href='/shop-invest.html?shop=${shop.id}'">
+        <div class="shop-icon">${shop.icon}</div>
+        <div class="shop-info">
+          <div class="shop-name">${shop.name} – ${shop.type}</div>
+          <div class="shop-meta">
+            <div class="meta-item"><span class="meta-label">Duration: </span><span class="meta-value">${shop.duration} days</span></div>
+            <div class="meta-item"><span class="meta-label">Daily Profit: </span><span class="meta-profit">${dailyPct}</span></div>
+            <div class="meta-item"><span class="meta-label">Min returns: </span><span class="meta-profit">₦${Number(totalReturn).toLocaleString()}</span></div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+          ${buildRing(pct)}
+          <span style="font-size:10px; color:#475569;">filled</span>
+        </div>
+        <div class="shop-min">
+          Min invest<span>₦${shop.min.toLocaleString()}</span>
+        </div>
+        <div class="arrow">›</div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function init(){
+  await loadProfile();
+  try {
+    const res = await fetch("/api/shop-fills", { headers:{ Authorization:"Bearer "+token } });
+    shopFills = await res.json();
+  } catch(err){ shopFills = {}; }
+  renderShops();
+}
+
+init();
+</script>
+</body>
+</html>

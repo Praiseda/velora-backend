@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual Deposit Requests – Velora Admin</title>
+<style>
+body{ margin:0; font-family:Arial; background:#081421; color:white; }
+.header{ background:#0d2035; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+.header h2{ margin:0; font-size:16px; }
+.container{ padding:20px; }
+.filters{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+.filters input{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; width:220px; }
+.filters input:focus{ outline:none; border-color:#22c55e; }
+.filters select{ padding:9px 12px; border-radius:7px; border:1px solid #1e4d6b; background:#0a1e2e; color:white; font-size:13px; }
+.filters button{ background:#1e4d6b; color:#7dd3fc; border:1px solid #2d6a8f; padding:8px 14px; border-radius:7px; font-size:13px; cursor:pointer; }
+table{ width:100%; border-collapse:collapse; }
+th,td{ border:1px solid #2d4d66; padding:10px; font-size:13px; }
+th{ background:#0d2035; }
+button{ padding:6px 10px; border:none; cursor:pointer; border-radius:5px; margin:2px; font-size:12px; color:white; }
+.btn-approve{ background:#16a34a; } .btn-reject{ background:#dc2626; }
+.empty{ color:#94a3b8; padding:10px; text-align:center; }
+.back-btn{ background:#0f2d45; color:#7dd3fc; border:1px solid #1e4d6b; padding:9px 16px; border-radius:8px; cursor:pointer; font-size:14px; }
+.back-btn:hover{ background:#163a54; }
+.count{ font-size:13px; color:#94a3b8; margin-bottom:8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/admin.html'">← Back</button>
+  <h2>📥 Manual Deposit Requests</h2>
+  <div></div>
+</div>
+<div class="container">
+  <div class="filters">
+    <input type="text" id="searchEmail" placeholder="Filter by email..." oninput="filterRows()">
+    <select id="filterStatus" onchange="filterRows()">
+      <option value="">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="rejected">Rejected</option>
+    </select>
+    <button onclick="filterRows()">Filter</button>
+    <button onclick="clearFilters()">Clear</button>
+  </div>
+  <div class="count" id="countLabel">Loading...</div>
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Amount</th><th>Plan</th><th>Proof / Note</th><th>Date</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody id="depositTable"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+  </table>
+</div>
+<script>
+const token = localStorage.getItem("token");
+if(!token){ window.location.href="/login.html"; }
+let allRows = [];
+
+async function loadRequests(){
+  try {
+    const res  = await fetch("/api/admin/deposit-requests", { headers:{ Authorization:"Bearer "+token } });
+    if(res.status===401||res.status===403){ window.location.href="/login.html"; return; }
+    allRows = await res.json();
+    renderRows(allRows);
+  } catch(err){ console.error(err); }
+}
+
+function renderRows(data){
+  const table = document.getElementById("depositTable");
+  document.getElementById("countLabel").innerText = `${data.length} request${data.length!==1?"s":""}`;
+  if(!data.length){ table.innerHTML=`<tr><td colspan="7" class="empty">No requests found.</td></tr>`; return; }
+  table.innerHTML = data.map(d=>{
+    const date   = d.createdAt ? new Date(d.createdAt).toLocaleString() : "—";
+    const sColor = d.status==="confirmed"?"#4ade80":d.status==="rejected"?"#ef4444":"#fbbf24";
+    return `<tr>
+      <td>${d.email}</td>
+      <td>₦${Number(d.amount).toLocaleString()}</td>
+      <td>${d.planName}</td>
+      <td style="max-width:180px; word-break:break-word;">${d.proofNote||"—"}</td>
+      <td style="font-size:11px;">${date}</td>
+      <td style="color:${sColor}; font-weight:bold;">${d.status.toUpperCase()}</td>
+      <td>${d.status==="pending"?`
+        <button class="btn-approve" onclick="confirmDeposit(${d.id})">Confirm</button>
+        <button class="btn-reject"  onclick="rejectDeposit(${d.id})">Reject</button>
+      `:"—"}</td>
+    </tr>`;
+  }).join("");
+}
+
+function filterRows(){
+  const email  = document.getElementById("searchEmail").value.trim().toLowerCase();
+  const status = document.getElementById("filterStatus").value;
+  renderRows(allRows.filter(d=>
+    (!email  || d.email.toLowerCase().includes(email)) &&
+    (!status || d.status===status)
+  ));
+}
+function clearFilters(){
+  document.getElementById("searchEmail").value="";
+  document.getElementById("filterStatus").value="";
+  renderRows(allRows);
+}
+
+async function confirmDeposit(id){
+  if(!confirm("Confirm this deposit? Amount will be credited to the user's DEPOSIT WALLET (not main wallet).")) return;
+  const res  = await fetch("/api/admin/deposit-request/confirm",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+  const data = await res.json(); alert(data.message); loadRequests();
+}
+async function rejectDeposit(id){
+  if(!confirm("Reject this deposit request?")) return;
+  const res  = await fetch("/api/admin/deposit-request/reject",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})});
+  const data = await res.json(); alert(data.message); loadRequests();
+}
+loadRequests();
+</script>
+</body>
+</html>
