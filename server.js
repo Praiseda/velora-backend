@@ -207,7 +207,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     await pool.query(
       `INSERT INTO Users ("fullName", email, password, "walletBalance", "referralCode", "referredBy", plan, "isBlocked", "isAdmin")
-       VALUES ($1, $2, $3, 0, $4, $5, 'Starter', false, false)`,
+       VALUES ($1, $2, $3, 0, $4, $5, 'None', false, false)`,
       [fullName, email, hash, refCode, referrerEmail]
     );
 
