@@ -345,7 +345,7 @@ async function loadMyInvestments(){
               <div class="inv-amount">₦${Number(inv.amount).toLocaleString()}</div>
               <div class="inv-dates">Started: ${start.toDateString()} · Ends: ${endDate.toDateString()}</div>
             </div>
-            <div class="inv-status ${isActive?'active':'ended'}">${isActive?'✔ ACTIVE':'ONGOING'}</div>
+            <div class="inv-status ${isActive?'active':'ended'}">${isActive?'✔ ACTIVE':'ENDED'}</div>
           </div>
           <div class="profit-row">
             <span class="profit-label">Accumulated Profit so far</span>
